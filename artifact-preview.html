@@ -319,10 +319,10 @@
       <div class="terminal-window__body terminal-window__body--interactive" id="termOutput">
         <p>Bem-vindo(a) ao sistema de Artur. Digite <span class="accent">help</span> para ver os comandos disponíveis.</p>
       </div>
-      <div class="terminal-input-row">
+      <form class="terminal-input-row" id="termForm">
         <span class="prompt">artur@dev:~$</span>
-        <input type="text" id="termInput" autocomplete="off" spellcheck="false" aria-label="terminal input">
-      </div>
+        <input type="text" id="termInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" aria-label="terminal input">
+      </form>
     </div>
   </section>
 

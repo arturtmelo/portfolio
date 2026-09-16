@@ -895,8 +895,8 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     banner: banner,
     redbull: () => print('⚡ estourando uma lata de Red Bull... nível de energia restaurado.'),
     joke: () => print(jokes[Math.floor(Math.random() * jokes.length)]),
-    github: () => print('abrindo o github do Artur ... <a href="https://github.com/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
-    linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
+    github: () => print('abrindo o github do Artur ... <a href="https://github.com/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
+    linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/artur-tavares-de-melo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
     sudo: () => print('Bonita tentativa. Você não está na lista de sudoers. Esse incidente será reportado. 😏'),
     konami: () => print('tente digitar isso com o teclado: ↑ ↑ ↓ ↓ ← → ← → B A'),
     theme: (args) => {
@@ -953,13 +953,18 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
   print('Digite <span class="accent">help</span> para ver os comandos disponíveis.');
 
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      playClick();
-      execute(input.value);
-      input.value = '';
-      return;
-    }
     if (e.key.length === 1) playClick();
+  });
+
+  // a <form> submit (not a raw keydown check) is what reliably catches the
+  // enter/go/send key across mobile virtual keyboards — keydown alone misses it
+  const form = input.closest('form');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    playClick();
+    execute(input.value);
+    input.value = '';
+    input.focus();
   });
 
   terminalRunCommand = execute;
