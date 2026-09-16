@@ -345,7 +345,6 @@ code { font-family: var(--font-mono); color: var(--green); }
   align-items: center;
   justify-content: center;
   transition: border-color .2s ease, transform .2s ease;
-  animation: whatsappPulse 2.6s ease-in-out infinite;
 }
 .whatsapp-btn:hover { border-color: var(--green); transform: translateY(-2px); }
 .whatsapp-btn__icon {
@@ -361,14 +360,6 @@ code { font-family: var(--font-mono); color: var(--green); }
   -webkit-mask-size: contain;
   mask-size: contain;
 }
-@keyframes whatsappPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--green-rgb), .35); }
-  50% { box-shadow: 0 0 0 8px rgba(var(--green-rgb), 0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .whatsapp-btn { animation: none; }
-}
-
 .reveal { opacity: 0; transform: translateY(30px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.in-view { opacity: 1; transform: translateY(0); }
 
