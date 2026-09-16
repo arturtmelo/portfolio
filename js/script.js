@@ -618,11 +618,11 @@ document.addEventListener('keydown', (e) => {
     { id: 'py', label: 'Python', cat: 'lang', level: .75, x: .24, y: .16 },
     { id: 'dotnet', label: '.NET', cat: 'front', level: .90, x: .28, y: .06 },
     { id: 'react', label: 'React', cat: 'front', level: .75, x: .50, y: .14 },
-    { id: 'vue', label: 'Vue/Angular', cat: 'front', level: .65, x: .74, y: .05 },
+    { id: 'vue', label: 'Vue/Angular', cat: 'front', level: .65, x: .74, y: .05, mobile: { x: .72, y: .07 } },
     { id: 'node', label: 'Node.js', cat: 'front', level: .70, x: .46, y: .34 },
     { id: 'azure', label: 'Azure', cat: 'cloud', level: .80, x: .94, y: .28 },
     { id: 'docker', label: 'Docker', cat: 'cloud', level: .70, x: .96, y: .58 },
-    { id: 'sql', label: 'SQL / MySQL', cat: 'cloud', level: .80, x: .84, y: .84 },
+    { id: 'sql', label: 'SQL / MySQL', cat: 'cloud', level: .80, x: .84, y: .84, mobile: { x: .92, y: .70 } },
     { id: 'git', label: 'Git / CI-CD', cat: 'cloud', level: .85, x: .66, y: .90 },
   ];
   const EXTRA_EDGES = [
@@ -649,8 +649,25 @@ document.addEventListener('keydown', (e) => {
   window.addEventListener('resize', resize);
   resize();
 
-  function pos(node) { return { x: node.x * w, y: node.y * h }; }
+  function pos(node) {
+    const narrow = w < 420;
+    const src = (narrow && node.mobile) ? node.mobile : node;
+    // pull nodes in from the edges on narrow canvases so labels have room to breathe
+    const compress = narrow ? 0.7 : 1;
+    const x = 0.5 + (src.x - 0.5) * compress;
+    return { x: x * w, y: src.y * h };
+  }
   function radius(level) { return 5 + level * 9; }
+
+  // keeps node labels from spilling past the canvas edge on narrow (mobile) widths
+  function fillClampedLabel(str, x, y, pad = 4) {
+    const half = ctx.measureText(str).width / 2;
+    let align = 'center', drawX = x;
+    if (x - half < pad) { align = 'left'; drawX = pad; }
+    else if (x + half > w - pad) { align = 'right'; drawX = w - pad; }
+    ctx.textAlign = align;
+    ctx.fillText(str, drawX, y);
+  }
 
   function findNodeAt(x, y) {
     for (const s of SKILLS) {
@@ -715,9 +732,8 @@ document.addEventListener('keydown', (e) => {
       ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = text;
-      ctx.font = 'bold 12px "JetBrains Mono", monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(cat.label, p.x, p.y - 18);
+      ctx.font = `bold ${w < 420 ? 10 : 12}px "JetBrains Mono", monospace`;
+      fillClampedLabel(cat.label, p.x, p.y - 18);
     });
 
     // skill nodes + always-visible labels
@@ -739,9 +755,9 @@ document.addEventListener('keydown', (e) => {
         ctx.stroke();
       }
       ctx.fillStyle = on ? text : muted;
-      ctx.font = (on ? 'bold ' : '') + '10px "JetBrains Mono", monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${s.label} ${Math.round(s.level * 100)}%`, p.x, p.y + r + 13);
+      const skillFontSize = w < 420 ? 8.5 : 10;
+      ctx.font = (on ? 'bold ' : '') + `${skillFontSize}px "JetBrains Mono", monospace`;
+      fillClampedLabel(`${s.label} ${Math.round(s.level * 100)}%`, p.x, p.y + r + 13);
     });
   }
 
@@ -796,7 +812,7 @@ document.addEventListener('keydown', (e) => {
 
   const paletteBtn = document.createElement('button');
   paletteBtn.type = 'button';
-  paletteBtn.className = 'nav__iconbtn';
+  paletteBtn.className = 'nav__iconbtn nav__iconbtn--kbd';
   paletteBtn.setAttribute('aria-label', 'Abrir paleta de comandos');
   paletteBtn.innerHTML = '⌘ <span>K</span>';
   paletteBtn.addEventListener('click', () => openPalette());
@@ -810,7 +826,7 @@ document.addEventListener('keydown', (e) => {
 
   const shortcutsBtn = document.createElement('button');
   shortcutsBtn.type = 'button';
-  shortcutsBtn.className = 'nav__iconbtn';
+  shortcutsBtn.className = 'nav__iconbtn nav__iconbtn--kbd';
   shortcutsBtn.setAttribute('aria-label', 'Ver atalhos de teclado');
   shortcutsBtn.textContent = '⌨';
   shortcutsBtn.addEventListener('click', () => openShortcutsModal());
