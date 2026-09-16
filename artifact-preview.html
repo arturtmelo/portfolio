@@ -1,0 +1,426 @@
+<title>Artur Melo // Dev Full-Stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+
+<canvas id="matrix-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- FIXED SOCIAL SIDEBAR -->
+<nav class="side-links" aria-label="redes sociais">
+  <a href="https://github.com/" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+  </a>
+  <a href="https://www.linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.49V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 11.02-4.14 2.07 2.07 0 01-.02 4.14zM7.11 20.45H3.56V9h3.55v11.45z"/></svg>
+  </a>
+  <a href="mailto:arturtmelo1@gmail.com" aria-label="Email" title="Email">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5h18a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1zm18 2.24-8.4 6.1a1 1 0 01-1.18 0L2 7.24V18h20V7.24zM3.4 6l8.6 6.24L20.6 6H3.4z"/></svg>
+  </a>
+  <span class="side-links__line" aria-hidden="true"></span>
+</nav>
+
+<!-- BACK TO TOP -->
+<button type="button" id="backToTop" class="back-to-top" aria-label="voltar ao topo">↑</button>
+
+<!-- BOOT SCREEN -->
+<div id="boot" class="boot">
+  <div class="boot__lines" id="bootLines"></div>
+  <div class="boot__skip">clique em qualquer lugar para pular</div>
+</div>
+
+<!-- NAV -->
+<header class="nav" id="nav">
+  <a href="#hero" class="nav__logo" id="logoClick" data-text="artur@dev:~$">artur@dev:~<span class="nav__logo-cursor">$</span></a>
+  <nav class="nav__links">
+    <a href="#about">sobre</a>
+    <a href="#skills">stack</a>
+    <a href="#projects">projetos</a>
+    <a href="#terminal">terminal</a>
+    <a href="#playground">playground</a>
+    <a href="#contact">contato</a>
+  </nav>
+  <button class="nav__burger" id="burger" aria-label="menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<div class="nav__mobile" id="navMobile">
+  <a href="#about">sobre</a>
+  <a href="#skills">stack</a>
+  <a href="#projects">projetos</a>
+  <a href="#terminal">terminal</a>
+  <a href="#playground">playground</a>
+  <a href="#contact">contato</a>
+</div>
+
+<main>
+
+  <!-- HERO -->
+  <section id="hero" class="hero">
+    <div class="hero__bg-glow" id="heroGlow"></div>
+    <p class="hero__eyebrow">// bem-vindo(a) ao sistema</p>
+    <h1 class="hero__title glitch" data-text="ARTUR">ARTUR</h1>
+    <h2 class="hero__role">
+      <span class="hero__role-prefix">$</span>
+      <span id="typewriter"></span><span class="cursor-blink">_</span>
+    </h2>
+    <p class="hero__desc">
+      Desenvolvedor <strong>full-stack</strong> com foco em <strong>C# / .NET</strong>,
+      experiência em <strong>cloud (Azure)</strong>, APIs escaláveis e pipelines de CI/CD.
+      Antes de programar, estudei Economia — hoje ainda calculo o "ROI" de cada refactor.
+    </p>
+    <div class="hero__cta">
+      <a href="#projects" class="btn btn--primary">ver_projetos()</a>
+      <a href="#terminal" class="btn btn--ghost">abrir_terminal()</a>
+      <button type="button" id="downloadCvBtn" class="btn btn--ghost">baixar_cv()</button>
+    </div>
+
+    <div class="hero__stats">
+      <div class="stat">
+        <span class="stat__label">LIFETIME</span>
+        <span class="stat__value" id="statUptime">0d 00:00:00</span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">CPU</span>
+        <span class="stat__value" id="statCpu">--%</span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">STATUS</span>
+        <span class="stat__value stat__value--online" id="statStatus">ONLINE</span>
+      </div>
+    </div>
+
+    <a href="#about" class="scroll-hint" aria-label="rolar para baixo">
+      <span></span>
+    </a>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="section about">
+    <p class="section__tag">01 // sobre</p>
+    <h2 class="section__title">sobre.txt</h2>
+
+    <div class="about__grid">
+      <div class="terminal-window reveal">
+        <div class="terminal-window__bar">
+          <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
+          <span class="terminal-window__title">sobre.txt</span>
+        </div>
+        <div class="terminal-window__body">
+          <p><span class="prompt">➜</span> Sou <strong>Artur Tavares de Melo</strong>,
+          desenvolvedor <strong>full-stack</strong> com foco em C#/.NET.</p>
+          <p><span class="prompt">➜</span> Na <strong>Intelectah</strong> (2023–2024), construí
+          APIs escaláveis em .NET integradas a serviços Azure, e mantive pipelines de CI/CD
+          com testes de carga, unitários, de integração e E2E.</p>
+          <p><span class="prompt">➜</span> Antes disso, na <strong>Hurtz Importação</strong>
+          (2021–2022), desenvolvi aplicações internas em Java e React e automatizei relatórios
+          com Python.</p>
+          <p><span class="prompt">➜</span> Trajetória pouco convencional: comecei estudando
+          Economia na UFPE (2020–2022), migrei pra Gestão de TI na Cesar School (2023–2025) —
+          hoje transito entre código, nuvem e visão de negócio.</p>
+          <p><span class="prompt">➜</span> Fora do trabalho: construí o <strong>Recifle</strong>
+          e o <strong>Rover</strong> (veja em <em>#projetos</em>), sou tutor voluntário de lógica
+          e estrutura de dados, e falo inglês fluente (intercâmbio nos EUA) e espanhol.</p>
+          <p class="typed-cmd"><span class="prompt">➜</span> <span class="blink-caret">|</span></p>
+        </div>
+      </div>
+
+      <div class="about__facts reveal">
+        <div class="fact-card">
+          <span class="fact-card__icon">🎓</span>
+          <h3>Formação</h3>
+          <p>Gestão de TI — Cesar School <span class="muted">(2023–2025)</span><br>Economia — UFPE <span class="muted">(2020–2022)</span></p>
+        </div>
+        <div class="fact-card">
+          <span class="fact-card__icon">🧠</span>
+          <h3>Foco atual</h3>
+          <p>Full-stack: <span class="muted">C#/.NET, React/Vue/Angular, Cloud (Azure)</span></p>
+        </div>
+        <div class="fact-card">
+          <span class="fact-card__icon">🌎</span>
+          <h3>Idiomas</h3>
+          <p>Inglês fluente · Espanhol</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="git-log reveal">
+      <div class="terminal-window">
+        <div class="terminal-window__bar">
+          <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
+          <span class="terminal-window__title">git log --graph --oneline --all</span>
+        </div>
+        <ul class="git-log__body">
+          <li class="git-log__commit git-log__commit--head">
+            <span class="git-log__node"><span class="git-log__dot"></span></span>
+            <div class="git-log__info">
+              <p class="git-log__meta"><code class="git-log__hash">HEAD -&gt; main</code><span class="git-log__date">agora</span></p>
+              <p class="git-log__msg"><span class="git-log__tag git-log__tag--feat">feat:</span> você está lendo o commit mais recente 👋</p>
+            </div>
+          </li>
+          <li class="git-log__commit">
+            <span class="git-log__node"><span class="git-log__dot"></span></span>
+            <div class="git-log__info">
+              <p class="git-log__meta"><code class="git-log__hash">c04a7f1</code><span class="git-log__date">2024–hoje</span></p>
+              <p class="git-log__msg"><span class="git-log__tag git-log__tag--feat">feat:</span> Recifle e Rover — dois projetos próprios, do zero</p>
+            </div>
+          </li>
+          <li class="git-log__commit">
+            <span class="git-log__node"><span class="git-log__dot"></span></span>
+            <div class="git-log__info">
+              <p class="git-log__meta"><code class="git-log__hash">91bce44</code><span class="git-log__date">06/2024</span></p>
+              <p class="git-log__msg"><span class="git-log__tag git-log__tag--chore">chore:</span> encerra ciclo na Intelectah, foca em projetos próprios</p>
+            </div>
+          </li>
+          <li class="git-log__commit">
+            <span class="git-log__node"><span class="git-log__dot"></span></span>
+            <div class="git-log__info">
+              <p class="git-log__meta"><code class="git-log__hash">5f0c3aa</code><span class="git-log__date">06/2023</span></p>
+              <p class="git-log__msg"><span class="git-log__tag git-log__tag--feat">feat:</span> Dev Full-Stack na Intelectah — C#/.NET, Azure, pipelines de CI/CD</p>
+            </div>
+          </li>
+          <li class="git-log__commit">
+            <span class="git-log__node"><span class="git-log__dot"></span></span>
+            <div class="git-log__info">
+              <p class="git-log__meta"><code class="git-log__hash">e27d910</code><span class="git-log__date">11/2022</span></p>
+              <p class="git-log__msg"><span class="git-log__tag git-log__tag--refactor">refactor!:</span> BREAKING CHANGE — migra de Economia pra Ciência da Computação (Gestão de TI, Cesar School)</p>
+            </div>
+          </li>
+          <li class="git-log__commit">
+            <span class="git-log__node"><span class="git-log__dot"></span></span>
+            <div class="git-log__info">
+              <p class="git-log__meta"><code class="git-log__hash">8b1e4a0</code><span class="git-log__date">04/2021</span></p>
+              <p class="git-log__msg"><span class="git-log__tag git-log__tag--feat">feat:</span> primeiro contato com código de verdade — automações em Python na Hurtz Importação</p>
+            </div>
+          </li>
+          <li class="git-log__commit git-log__commit--root">
+            <span class="git-log__node"><span class="git-log__dot"></span></span>
+            <div class="git-log__info">
+              <p class="git-log__meta"><code class="git-log__hash">a3f9c2e</code><span class="git-log__date">02/2020</span></p>
+              <p class="git-log__msg"><span class="git-log__tag git-log__tag--init">init:</span> começa a graduação em Economia (UFPE)</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SKILLS -->
+  <section id="skills" class="section skills">
+    <p class="section__tag">02 // stack</p>
+    <h2 class="section__title">./habilidades</h2>
+
+    <div class="skill-graph reveal">
+      <canvas id="skillGraphCanvas" role="img" aria-label="Grafo interativo de habilidades técnicas, agrupadas em Linguagens, Frontend e Cloud &amp; Ferramentas"></canvas>
+      <p class="skill-graph__hint">passe o mouse (ou o dedo) pelos nós pra destacar as conexões.</p>
+      <ul class="sr-only">
+        <li>C# — 90%</li><li>JavaScript — 80%</li><li>Java — 70%</li><li>Python — 75%</li>
+        <li>.NET — 90%</li><li>React — 75%</li><li>Vue.js / Angular — 65%</li><li>Node.js — 70%</li>
+        <li>Azure — 80%</li><li>Docker — 70%</li><li>SQL / MySQL — 80%</li><li>Git / CI-CD — 85%</li>
+      </ul>
+    </div>
+
+    <div class="badges reveal">
+      <span class="badge">APIs escaláveis</span>
+      <span class="badge">CI/CD</span>
+      <span class="badge">testes E2E</span>
+      <span class="badge">Cloud Computing</span>
+      <span class="badge">Dapper</span>
+      <span class="badge">POO</span>
+      <span class="badge">web scraping</span>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section id="projects" class="section projects">
+    <p class="section__tag">03 // projetos</p>
+    <h2 class="section__title">--projects</h2>
+
+    <div class="projects__grid">
+      <article class="project-card terminal-window reveal">
+        <div class="terminal-window__bar">
+          <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
+          <span class="terminal-window__title">recifle/</span>
+        </div>
+        <div class="project-card__body">
+          <h3>Recifle</h3>
+          <p>Conecta centros de reciclagem diretamente com fornecedores e a população,
+          permitindo negociações e fechamento de negócios de forma direta.</p>
+          <div class="tags"><span>Full-Stack</span><span>Sustentabilidade</span><span>Marketplace</span></div>
+          <div class="project-card__links">
+            <a href="#" target="_blank" rel="noopener">código &#8599;</a>
+            <span class="muted">[adicionar link]</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="project-card terminal-window reveal">
+        <div class="terminal-window__bar">
+          <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
+          <span class="terminal-window__title">rover.cs</span>
+        </div>
+        <div class="project-card__body">
+          <h3>Rover</h3>
+          <p>Ferramenta de web scraping que extrai automaticamente dados essenciais da web
+          e exporta os resultados de forma estruturada.</p>
+          <div class="tags"><span>C#</span><span>Selenium</span><span>ClosedXML</span></div>
+          <div class="project-card__links">
+            <a href="#" target="_blank" rel="noopener">código &#8599;</a>
+            <span class="muted">[adicionar link]</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="project-card project-card--ghost reveal" style="grid-column: 1 / -1;">
+        <div class="project-card__body project-card__body--center">
+          <h3>+ seu próximo projeto</h3>
+          <p class="muted">em construção...</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- TERMINAL PLAYGROUND -->
+  <section id="terminal" class="section terminal-section">
+    <p class="section__tag">04 // interativo</p>
+    <h2 class="section__title">um terminal de verdade</h2>
+    <p class="terminal-section__hint">digite <code>help</code> e explore. sim, ele funciona de verdade.</p>
+
+    <div class="terminal-window terminal-window--big reveal" id="fakeTerminal">
+      <div class="terminal-window__bar">
+        <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
+        <span class="terminal-window__title">artur@dev: ~</span>
+      </div>
+      <div class="terminal-window__body terminal-window__body--interactive" id="termOutput">
+        <p>Bem-vindo(a) ao sistema de Artur. Digite <span class="accent">help</span> para ver os comandos disponíveis.</p>
+      </div>
+      <div class="terminal-input-row">
+        <span class="prompt">artur@dev:~$</span>
+        <input type="text" id="termInput" autocomplete="off" spellcheck="false" aria-label="terminal input">
+      </div>
+    </div>
+  </section>
+
+  <!-- PLAYGROUND -->
+  <section id="playground" class="section playground">
+    <p class="section__tag">05 // playground</p>
+    <h2 class="section__title">hora do intervalo</h2>
+    <p class="playground__hint">se quiser fazer uma pausa, fique à vontade: 3 jogos simples, feitos só com HTML, CSS e JavaScript puro — sem framework nenhum.</p>
+
+    <div class="terminal-window reveal" id="playgroundWindow">
+      <div class="terminal-window__bar">
+        <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
+        <span class="terminal-window__title" id="playgroundTitle">snake.js</span>
+      </div>
+
+      <div class="game-switcher">
+        <div class="game-switcher__tabs">
+          <button type="button" class="game-switcher__tab" data-game="snake" aria-label="Snake">🐍</button>
+          <button type="button" class="game-switcher__tab" data-game="typing" aria-label="Corrida de digitação">⌨️</button>
+          <button type="button" class="game-switcher__tab" data-game="memory" aria-label="Jogo da memória">🧠</button>
+        </div>
+      </div>
+
+      <div class="game-page" data-game-page="snake">
+        <div class="snake">
+          <div class="snake__top">
+            <span>pontuação: <b id="snakeScore" class="tabular">0</b></span>
+            <span>recorde: <b id="snakeBest" class="tabular">0</b></span>
+            <select id="snakeFoodMode" class="snake__select" aria-label="modo de jogo">
+              <option value="5" selected>5 comidas</option>
+              <option value="10">10 comidas</option>
+              <option value="32">32 comidas</option>
+            </select>
+          </div>
+          <div class="snake__canvas-wrap">
+            <canvas id="snakeCanvas" width="560" height="560" aria-label="jogo da cobrinha"></canvas>
+            <button type="button" id="snakePlay" class="snake__replay" aria-label="jogar">▶</button>
+          </div>
+          <p class="snake__hint snake__hint--desktop">use as setas do teclado (ou WASD) pra jogar.</p>
+          <p class="snake__hint snake__hint--touch">arraste o dedo na tela ou use os botões abaixo pra jogar.</p>
+          <div class="snake__dpad" id="snakeDpad">
+            <button type="button" data-dir="up" aria-label="cima">▲</button>
+            <button type="button" data-dir="left" aria-label="esquerda">◀</button>
+            <button type="button" data-dir="down" aria-label="baixo">▼</button>
+            <button type="button" data-dir="right" aria-label="direita">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-page" data-game-page="typing" hidden>
+        <div class="typing">
+          <div class="typing__top">
+            <span>wpm: <b id="typingWpm" class="tabular">0</b></span>
+            <span>precisão: <b id="typingAcc" class="tabular">100</b>%</span>
+            <span>recorde: <b id="typingBest" class="tabular">0</b> wpm</span>
+          </div>
+          <div class="typing__field-wrap">
+            <div class="typing__field" id="typingField">
+              <p class="typing__text" id="typingText" aria-hidden="true"></p>
+              <textarea id="typingInput" class="typing__input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="digite o trecho de código exibido"></textarea>
+            </div>
+            <button type="button" id="typingPlay" class="snake__replay" aria-label="jogar">▶</button>
+          </div>
+          <p class="typing__hint">digite o trecho de código exatamente como aparece — o mais rápido e certo possível.</p>
+        </div>
+      </div>
+
+      <div class="game-page" data-game-page="memory" hidden>
+        <div class="mem">
+          <p class="mem__hint">jogo da memória — encontre os pares de ícones no menor número de jogadas.</p>
+          <div class="mem__board" id="memBoard"></div>
+          <div class="mem__stats">
+            <span>jogadas: <b id="memMoves" class="tabular">0</b></span>
+            <span>recorde: <b id="memBest" class="tabular">--</b></span>
+          </div>
+          <button type="button" id="memReset" class="btn btn--ghost">embaralhar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="section contact">
+    <p class="section__tag">06 // contato</p>
+    <h2 class="section__title">./conectar --comigo</h2>
+    <p class="contact__desc">Aberto a oportunidades, projetos, colaborações ou só trocar uma ideia sobre tecnologia.</p>
+
+    <div class="contact__grid">
+      <a class="contact-card" href="mailto:arturtmelo1@gmail.com">
+        <button type="button" class="contact-card__copy" id="copyEmailBtn" aria-label="copiar email">⧉</button>
+        <span class="contact-card__icon">✉</span>
+        <span class="contact-card__label">Email</span>
+        <span class="contact-card__value">arturtmelo1@gmail.com</span>
+      </a>
+      <a class="contact-card" href="https://github.com/" target="_blank" rel="noopener">
+        <span class="contact-card__icon">⌥</span>
+        <span class="contact-card__label">GitHub</span>
+        <span class="contact-card__value">github.com/seu-usuario</span>
+      </a>
+      <a class="contact-card" href="https://www.linkedin.com/" target="_blank" rel="noopener">
+        <span class="contact-card__icon">in</span>
+        <span class="contact-card__label">LinkedIn</span>
+        <span class="contact-card__value">linkedin.com/in/seu-usuario</span>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p><code>console.log("feito por Artur, com &lt;3 e café ☕");</code></p>
+  <p class="footer__small">&copy; <span id="year"></span> Artur — todos os direitos reservados. <span class="konami-hint">↑↑↓↓←→←→BA</span></p>
+</footer>
+
+<div id="secretOverlay" class="secret-overlay">
+  <div class="secret-overlay__content">
+    <p class="glitch" data-text="ACESSO CONCEDIDO">ACESSO CONCEDIDO</p>
+    <p>Você encontrou o easter egg secreto. 🐍 Parabéns, hacker.</p>
+    <button id="closeSecret" class="btn btn--ghost">fechar_(x)</button>
+  </div>
+</div>
+
+<script src="js/script.js"></script>
