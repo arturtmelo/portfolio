@@ -374,7 +374,7 @@ code { font-family: var(--font-mono); color: var(--green); }
   .back-to-top { transition: opacity .1s linear; }
 }
 
-/* a slow-spinning dashed ring on the fixed corner buttons — a small "HUD" touch */
+/* a dashed ring on the fixed corner buttons, with one dot orbiting in cyan — a small "HUD" touch */
 .back-to-top::before,
 .whatsapp-btn::before {
   content: '';
@@ -383,17 +383,33 @@ code { font-family: var(--font-mono); color: var(--green); }
   border: 1px dashed rgba(var(--green-rgb), .3);
   border-radius: 50%;
   pointer-events: none;
-  animation: fabRingSpin 14s linear infinite;
 }
 .back-to-top:hover::before,
 .whatsapp-btn:hover::before {
   border-color: rgba(var(--green-rgb), .65);
 }
-@keyframes fabRingSpin {
+.back-to-top::after,
+.whatsapp-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -27px;
+  margin-left: -2px;
+  background: var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(var(--cyan-rgb), .8);
+  pointer-events: none;
+  transform-origin: 2px 27px;
+  animation: fabDotOrbit 8s linear infinite;
+}
+@keyframes fabDotOrbit {
   to { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .back-to-top::before, .whatsapp-btn::before { animation: none; }
+  .back-to-top::after, .whatsapp-btn::after { animation: none; }
 }
 
 /* ---------- whatsapp button (sits just above back-to-top) ---------- */
@@ -594,7 +610,7 @@ code { font-family: var(--font-mono); color: var(--green); }
   background: #10151f;
   border-bottom: 1px solid var(--border);
 }
-.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .dot--red { background: var(--red); }
 .dot--yellow { background: var(--yellow); }
 .dot--green { background: var(--green); }
@@ -615,7 +631,15 @@ code { font-family: var(--font-mono); color: var(--green); }
   outline: 2px solid var(--green);
   outline-offset: 2px;
 }
-.terminal-window__title { margin-left: .75rem; font-size: .75rem; color: var(--muted); }
+.terminal-window__title {
+  margin-left: .75rem;
+  font-size: .75rem;
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .terminal-window__body { padding: 1.3rem 1.4rem; font-size: .85rem; }
 .terminal-window__body p { margin: 0 0 .7rem; color: var(--text); }
 .prompt { color: var(--green); margin-right: .4rem; }
@@ -663,6 +687,37 @@ code { font-family: var(--font-mono); color: var(--green); }
   from { transform: scale(.92); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+@media (max-width: 600px) {
+  .terminal-window--maximized { inset: 9vh 5vw !important; }
+}
+
+/* themed close button shown above a maximized window */
+.max-close-btn {
+  position: fixed;
+  top: 1.1rem;
+  right: 1.5rem;
+  z-index: 9002;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  padding: .5rem .9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity .2s ease, transform .2s ease, border-color .2s ease, color .2s ease;
+}
+.max-close-btn.open { opacity: 1; visibility: visible; transform: translateY(0); }
+.max-close-btn:hover { border-color: var(--green); color: var(--text); }
+@media (max-width: 600px) {
+  .max-close-btn { top: .75rem; right: .75rem; padding: .45rem .7rem; font-size: .75rem; }
+}
 
 /* closed: replaced entirely by a small reopen chip */
 .terminal-window__restore {
@@ -682,6 +737,7 @@ code { font-family: var(--font-mono); color: var(--green); }
 }
 .terminal-window__restore:hover { border-color: var(--green); color: var(--text); }
 .terminal-window__restore strong { color: var(--text); }
+.terminal-window__restore-status { color: var(--red); }
 
 /* ---------- about ---------- */
 .about__grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 2rem; }
@@ -1361,7 +1417,7 @@ kbd {
   /* kill every decorative / interactive-only layer */
   #matrix-canvas, .scanlines, .cursor-dot, .cursor-ring, .boot,
   .nav, .nav__mobile, .scroll-hint, .hero__bg-glow, .hero__cta, .hero__stats,
-  .side-links, .back-to-top, .whatsapp-btn, .projects__filters, .contact-card__copy, .section__title-icon,
+  .side-links, .back-to-top, .whatsapp-btn, .max-close-btn, .projects__filters, .contact-card__copy, .section__title-icon,
   .toast-stack, .palette-backdrop, .secret-overlay, .terminal-window-max-backdrop,
   #terminal, #playground, .footer, .konami-hint,
   .terminal-window__bar, .project-card .terminal-window__bar,

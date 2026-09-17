@@ -503,6 +503,7 @@ function scrambleText(el, finalText, duration = 650) {
 
 /* ---------- functional window controls (yellow = minimize, red = close) ---------- */
 let maxBackdrop = null;
+let maxCloseBtn = null;
 let currentMaximized = null;
 
 function ensureMaxBackdrop() {
@@ -511,6 +512,15 @@ function ensureMaxBackdrop() {
   maxBackdrop.className = 'terminal-window-max-backdrop';
   document.body.appendChild(maxBackdrop);
   maxBackdrop.addEventListener('click', restoreMaximized);
+
+  maxCloseBtn = document.createElement('button');
+  maxCloseBtn.type = 'button';
+  maxCloseBtn.className = 'max-close-btn';
+  maxCloseBtn.setAttribute('aria-label', 'fechar janela maximizada');
+  maxCloseBtn.innerHTML = '✕ <span>fechar</span>';
+  maxCloseBtn.addEventListener('click', restoreMaximized);
+  document.body.appendChild(maxCloseBtn);
+
   return maxBackdrop;
 }
 
@@ -519,6 +529,7 @@ function restoreMaximized() {
   currentMaximized.classList.remove('terminal-window--maximized');
   currentMaximized = null;
   maxBackdrop?.classList.remove('open');
+  maxCloseBtn?.classList.remove('open');
   unlockScroll();
   playRestore();
 }
@@ -564,6 +575,7 @@ function restoreMaximized() {
         win.classList.add('terminal-window--maximized');
         currentMaximized = win;
         ensureMaxBackdrop().classList.add('open');
+        maxCloseBtn.classList.add('open');
         lockScroll();
         playMaximize();
       }
@@ -580,7 +592,7 @@ function restoreMaximized() {
       const restore = document.createElement('button');
       restore.type = 'button';
       restore.className = 'terminal-window__restore';
-      restore.innerHTML = `🗔 <strong>${title}</strong> <span class="muted">— fechada, clique para reabrir</span>`;
+      restore.innerHTML = `🗔 <strong>${title}</strong> <span class="terminal-window__restore-status">— fechada, clique para reabrir</span>`;
       restore.addEventListener('click', () => restore.replaceWith(win));
       win.replaceWith(restore);
     }
