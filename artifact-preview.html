@@ -4,6 +4,8 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 
+<a href="#main" class="skip-link">pular para o conteúdo</a>
+
 <canvas id="matrix-canvas"></canvas>
 <div class="scanlines"></div>
 <div class="cursor-dot" id="cursorDot"></div>
@@ -61,7 +63,7 @@
   <a href="#contact">contato</a>
 </div>
 
-<main>
+<main id="main">
 
   <!-- HERO -->
   <section id="hero" class="hero">
@@ -316,7 +318,7 @@
         <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
         <span class="terminal-window__title">artur@dev: ~</span>
       </div>
-      <div class="terminal-window__body terminal-window__body--interactive" id="termOutput">
+      <div class="terminal-window__body terminal-window__body--interactive" id="termOutput" aria-live="polite">
         <p>Digite <span class="accent">help</span> para ver os comandos disponíveis.</p>
       </div>
       <form class="terminal-input-row" id="termForm">

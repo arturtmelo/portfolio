@@ -58,6 +58,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   outline-offset: 2px;
 }
 
+/* invisible until tabbed to — lets keyboard/screen-reader users jump the nav */
+.skip-link {
+  position: fixed;
+  top: -60px;
+  left: 1rem;
+  z-index: 10000;
+  background: var(--bg-card, #0d0f14);
+  color: var(--green);
+  padding: .6rem 1.1rem;
+  border: 1px solid var(--green);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  text-decoration: none;
+  transition: top .2s ease;
+}
+.skip-link:focus-visible { top: 1rem; outline-offset: 4px; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .scanlines, .cursor-dot, .cursor-ring { display: none; }
