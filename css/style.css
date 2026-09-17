@@ -51,7 +51,7 @@
 }
 
 .tabular { font-variant-numeric: tabular-nums; }
-body.no-scroll { overflow: hidden; }
+body.no-scroll { overflow: hidden; position: fixed; left: 0; right: 0; width: 100%; }
 
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--green);

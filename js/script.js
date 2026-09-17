@@ -14,10 +14,28 @@ console.log(
   'color:#00e0ff;font-family:monospace;font-size:12px;'
 );
 
-/* ---------- shared scroll-lock helper (reference-counted: several overlays can hold it at once) ---------- */
+/* ---------- shared scroll-lock helper (reference-counted: several overlays can hold it at once) ----------
+   plain `overflow: hidden` on body doesn't reliably block touch-drag
+   scrolling on mobile — pinning body with position:fixed does, so the
+   background page can't move at all while a modal/overlay is open */
 let scrollLockCount = 0;
-function lockScroll() { scrollLockCount++; document.body.classList.add('no-scroll'); }
-function unlockScroll() { scrollLockCount = Math.max(0, scrollLockCount - 1); if (scrollLockCount === 0) document.body.classList.remove('no-scroll'); }
+let lockedScrollY = 0;
+function lockScroll() {
+  scrollLockCount++;
+  if (scrollLockCount > 1) return;
+  lockedScrollY = window.scrollY;
+  document.body.classList.add('no-scroll');
+  document.body.style.top = `-${lockedScrollY}px`;
+}
+function unlockScroll() {
+  scrollLockCount = Math.max(0, scrollLockCount - 1);
+  if (scrollLockCount > 0) return;
+  document.body.classList.remove('no-scroll');
+  document.body.style.top = '';
+  // an instant jump, not the site's global smooth-scroll — this just puts
+  // the page back where it visually already was, so it must not animate
+  window.scrollTo({ top: lockedScrollY, left: 0, behavior: 'instant' });
+}
 function scrollToId(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
 
 /* ---------- theme engine ---------- */
