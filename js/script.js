@@ -542,12 +542,20 @@ function restoreMaximized() {
     const green = bar?.querySelector('.dot--green');
     if (!bar || !yellow || !red) return;
 
+    // mousedown's native "focus the clicked target" default action would
+    // otherwise steal focus back from wherever the click handler sends it
+    // (e.g. maximize handing focus to the terminal input) — tabindex="0" is
+    // only here for keyboard activation, not mouse focus, so suppress that
+    const preventMouseFocus = (e) => e.preventDefault();
+
     yellow.setAttribute('role', 'button');
     yellow.setAttribute('tabindex', '0');
     yellow.setAttribute('aria-label', 'minimizar janela');
+    yellow.addEventListener('mousedown', preventMouseFocus);
     red.setAttribute('role', 'button');
     red.setAttribute('tabindex', '0');
     red.setAttribute('aria-label', 'fechar janela');
+    red.addEventListener('mousedown', preventMouseFocus);
 
     function toggleMinimize(e) {
       e.stopPropagation();
@@ -566,6 +574,7 @@ function restoreMaximized() {
       green.setAttribute('role', 'button');
       green.setAttribute('tabindex', '0');
       green.setAttribute('aria-label', 'maximizar janela');
+      green.addEventListener('mousedown', preventMouseFocus);
 
       function toggleMaximize(e) {
         e.stopPropagation();
@@ -581,6 +590,23 @@ function restoreMaximized() {
         backdrop.classList.add('open');
         lockScroll();
         playMaximize();
+        // maximizing is an explicit "let me use this" action — jump straight
+        // into any text input it has (real terminal, typing game) instead of
+        // making people click again to start typing
+        const focusable = win.querySelector('input[type="text"], textarea');
+        if (focusable) {
+          // On a scrolled page, Chromium can silently drop this focus a beat
+          // later while it settles the fixed-position backdrop into place —
+          // reassert a few times over the next half second so it sticks
+          // without waiting on any one event that may or may not fire first
+          [0, 60, 150, 300, 500].forEach((delay) => {
+            setTimeout(() => {
+              if (win.classList.contains('terminal-window--maximized') && document.activeElement !== focusable) {
+                focusable.focus({ preventScroll: true });
+              }
+            }, delay);
+          });
+        }
       }
       green.addEventListener('click', toggleMaximize);
       green.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMaximize(e); } });
@@ -950,6 +976,8 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     clear: () => { output.innerHTML = ''; },
     echo: (args) => print(args.join(' ') || ''),
   };
+  // a bare theme name (as shown by `theme` with no args) also works on its own
+  Object.keys(THEMES).forEach((name) => { commands[name] = () => commands.theme([name]); });
 
   function execute(raw) {
     raw = raw.trim();
