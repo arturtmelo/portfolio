@@ -65,7 +65,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .terminal-window--maximized { animation: none; }
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { scroll-behavior: smooth; overflow-x: hidden; }
 body { overflow-x: hidden; }
 

@@ -650,7 +650,7 @@ document.addEventListener('keydown', (e) => {
   resize();
 
   function pos(node) {
-    const narrow = w < 420;
+    const narrow = w < 620;
     const src = (narrow && node.mobile) ? node.mobile : node;
     // pull nodes in from the edges on narrow canvases so labels have room to breathe
     const compress = narrow ? 0.7 : 1;
@@ -732,7 +732,7 @@ document.addEventListener('keydown', (e) => {
       ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = text;
-      ctx.font = `bold ${w < 420 ? 10 : 12}px "JetBrains Mono", monospace`;
+      ctx.font = `bold ${w < 620 ? 10 : 12}px "JetBrains Mono", monospace`;
       fillClampedLabel(cat.label, p.x, p.y - 18);
     });
 
@@ -755,7 +755,7 @@ document.addEventListener('keydown', (e) => {
         ctx.stroke();
       }
       ctx.fillStyle = on ? text : muted;
-      const skillFontSize = w < 420 ? 8.5 : 10;
+      const skillFontSize = w < 620 ? 8.5 : 10;
       ctx.font = (on ? 'bold ' : '') + `${skillFontSize}px "JetBrains Mono", monospace`;
       fillClampedLabel(`${s.label} ${Math.round(s.level * 100)}%`, p.x, p.y + r + 13);
     });
