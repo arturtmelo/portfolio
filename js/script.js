@@ -923,8 +923,8 @@ let snakeIsPlaying = false; // lets the terminal's autofocus (below) step aside 
 <span class="accent">theme &lt;matrix|amber|dracula|nord|synthwave&gt;</span> — troca as cores do site<br>
 <span class="accent">snake</span> — abre o jogo escondido no playground &nbsp;
 <span class="accent">hack</span> — tenta invadir o mainframe<br>
-<span class="accent">redbull</span> · <span class="accent">joke</span> · <span class="accent">github</span> · <span class="accent">linkedin</span> · <span class="accent">konami</span> · <span class="accent">clear</span><br>
-dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</span>) em qualquer lugar da página pra abrir a paleta de comandos.`),
+<span class="accent">redbull</span> · <span class="accent">joke</span> · <span class="accent">github</span> · <span class="accent">linkedin</span> · <span class="accent">konami</span> · <span class="accent">clear</span>${isCoarsePointer ? '' : `<br>
+dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</span>) em qualquer lugar da página pra abrir a paleta de comandos.`}`),
     about: () => print('Artur Tavares de Melo — desenvolvedor full-stack (C#/.NET, JS) com passagem por Economia antes da Ciência da Computação. Curioso, teimoso e movido a Red Bull.'),
     skills: () => print('C# · .NET · Java · Python · JavaScript · React · Vue · Angular · Node.js · SQL/MySQL · Docker · Azure · CI/CD'),
     experience: () => print('Intelectah (2023–2024) — full-stack C#/.NET + Azure, APIs escaláveis, CI/CD, testes E2E.<br>Hurtz Importação (2021–2022) — apps internas em Java/React, automação com Python.'),
