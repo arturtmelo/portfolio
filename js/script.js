@@ -938,7 +938,7 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
 <span class="muted">250ml · ~113 kcal · 27g açúcar · 80mg cafeína · produtividade +77%</span>`),
     joke: () => print(jokes[Math.floor(Math.random() * jokes.length)]),
     github: () => print('abrindo o github do Artur ... <a href="https://github.com/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
-    linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/artur-tavares-de-melo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
+    linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
     sudo: () => print('Bonita tentativa. Você não está na lista de sudoers. Esse incidente será reportado. 😏'),
     konami: () => print('tente digitar isso com o teclado: ↑ ↑ ↓ ↓ ← → ← → B A'),
     theme: (args) => {
