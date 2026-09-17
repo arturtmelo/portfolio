@@ -1276,6 +1276,12 @@ kbd {
 }
 .snake__replay:hover { transform: translate(-50%, -50%) scale(1.08); border-color: var(--cyan); }
 .snake__replay[hidden] { display: none; }
+@media (max-width: 500px) {
+  /* the replay button is a fixed size while the canvas itself shrinks with
+     the viewport, so on narrow phones it grew large enough to cover the
+     "game over" / score text drawn on the canvas underneath it */
+  .snake__replay { width: 56px; height: 56px; font-size: 1.6rem; }
+}
 .snake__canvas-wrap {
   position: relative;
   width: 100%;
@@ -1289,7 +1295,10 @@ kbd {
   background: #0a0e17;
   border: 1px solid var(--border);
   border-radius: 8px;
-  touch-action: pinch-zoom;
+  touch-action: auto; /* idle/game-over: let the page scroll normally through the canvas */
+}
+#snakeCanvas.is-playing {
+  touch-action: pinch-zoom; /* dragging steers the snake; only suppress panning once actually playing */
 }
 .snake__hint { color: var(--muted); font-size: .75rem; text-align: center; max-width: 560px; }
 .snake__hint--touch { display: none; }

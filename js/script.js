@@ -1370,6 +1370,7 @@ document.addEventListener('keydown', (e) => {
   function endGame() {
     running = false;
     snakeIsPlaying = false;
+    canvas.classList.remove('is-playing');
     clearInterval(loopId);
     playGameOver();
     if (score > best) {
@@ -1391,6 +1392,7 @@ document.addEventListener('keydown', (e) => {
     running = true;
     isGameOver = false;
     snakeIsPlaying = true;
+    canvas.classList.add('is-playing');
     playBtn.hidden = true;
     draw(false);
     clearInterval(loopId);
