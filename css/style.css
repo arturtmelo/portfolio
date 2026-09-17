@@ -378,16 +378,16 @@ code { font-family: var(--font-mono); color: var(--green); }
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 2.5px;
-  height: .6px;
+  width: 1.8px;
+  height: .4px;
   margin-top: -27px;
-  margin-left: -1.25px;
+  margin-left: -.9px;
   background: var(--cyan);
   border-radius: .5px;
-  box-shadow: 0 0 2px rgba(var(--cyan-rgb), .7);
+  box-shadow: 0 0 1.5px rgba(var(--cyan-rgb), .7);
   pointer-events: none;
-  transform-origin: 1.25px 27px;
-  animation: fabDotOrbit 11s linear infinite;
+  transform-origin: .9px 27px;
+  animation: fabDotOrbit 100s linear infinite;
 }
 .whatsapp-btn::after {
   animation-direction: reverse;
