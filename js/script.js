@@ -422,7 +422,7 @@ function closeShortcutsModal() {
     statusEl.textContent = 'ERROR !';
     statusEl.classList.remove('stat__value--online');
     statusEl.classList.add('stat__value--error');
-    setTimeout(goOnline, 3000 + Math.random() * 3000);
+    setTimeout(goOnline, 3000);
   }
   function goOnline() {
     statusEl.textContent = 'ONLINE';
