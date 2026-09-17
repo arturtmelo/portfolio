@@ -163,7 +163,7 @@
           <p>Gestão de TI — Cesar School <span class="muted">(2023–2025)</span><br>Economia — UFPE <span class="muted">(2020–2022)</span></p>
         </div>
         <div class="fact-card">
-          <span class="fact-card__icon fact-card__icon--stack" aria-hidden="true"></span>
+          <span class="fact-card__icon fact-card__icon--brain" aria-hidden="true"></span>
           <h3>Foco atual</h3>
           <p>Full-stack: <span class="muted">C#/.NET, React/Vue/Angular, Cloud (Azure)</span></p>
         </div>
@@ -352,7 +352,10 @@
   <!-- PLAYGROUND -->
   <section id="playground" class="section playground">
     <p class="section__tag">05 // playground</p>
-    <h2 class="section__title">hora do intervalo</h2>
+    <div class="section__title-row">
+      <span class="section__title-icon section__title-icon--brain" aria-hidden="true"></span>
+      <h2 class="section__title">hora do intervalo</h2>
+    </div>
     <p class="playground__hint">se quiser fazer uma pausa, fique à vontade: 3 jogos simples, feitos só com HTML, CSS e JavaScript puro — sem framework nenhum.</p>
 
     <div class="terminal-window reveal" id="playgroundWindow">
@@ -374,10 +377,10 @@
           <div class="snake__top">
             <span>pontuação: <b id="snakeScore" class="tabular">0</b></span>
             <span>recorde: <b id="snakeBest" class="tabular">0</b></span>
-            <select id="snakeFoodMode" class="snake__select" aria-label="modo de jogo">
-              <option value="5" selected>5 comidas</option>
-              <option value="10">10 comidas</option>
-              <option value="32">32 comidas</option>
+            <select id="snakeFoodMode" class="snake__select" aria-label="quantidade de comidas">
+              <option value="5" selected>5 ⬡</option>
+              <option value="10">10 ⬡</option>
+              <option value="32">32 ⬡</option>
             </select>
           </div>
           <div class="snake__canvas-wrap">
