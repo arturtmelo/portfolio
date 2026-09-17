@@ -374,7 +374,7 @@ code { font-family: var(--font-mono); color: var(--green); }
   .back-to-top { transition: opacity .1s linear; }
 }
 
-/* a dashed ring on the fixed corner buttons, with one dot orbiting in cyan — a small "HUD" touch */
+/* a dashed ring on the fixed corner buttons, with one dash orbiting in cyan — a small "HUD" touch */
 .back-to-top::before,
 .whatsapp-btn::before {
   content: '';
@@ -395,15 +395,15 @@ code { font-family: var(--font-mono); color: var(--green); }
   top: 50%;
   left: 50%;
   width: 4px;
-  height: 4px;
+  height: 1.5px;
   margin-top: -27px;
   margin-left: -2px;
   background: var(--cyan);
-  border-radius: 50%;
-  box-shadow: 0 0 4px rgba(var(--cyan-rgb), .8);
+  border-radius: 1px;
+  box-shadow: 0 0 3px rgba(var(--cyan-rgb), .7);
   pointer-events: none;
   transform-origin: 2px 27px;
-  animation: fabDotOrbit 8s linear infinite;
+  animation: fabDotOrbit 11s linear infinite;
 }
 @keyframes fabDotOrbit {
   to { transform: rotate(360deg); }
@@ -636,9 +636,6 @@ code { font-family: var(--font-mono); color: var(--green); }
   font-size: .75rem;
   color: var(--muted);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .terminal-window__body { padding: 1.3rem 1.4rem; font-size: .85rem; }
 .terminal-window__body p { margin: 0 0 .7rem; color: var(--text); }
@@ -651,6 +648,7 @@ code { font-family: var(--font-mono); color: var(--green); }
 .terminal-window--minimized .terminal-window__title::after {
   content: ' — minimizada, clique para reabrir';
   font-style: italic;
+  color: var(--yellow);
 }
 
 /* maximized: the green dot pops the window into a focused, oversized view */

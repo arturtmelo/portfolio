@@ -592,7 +592,7 @@ function restoreMaximized() {
       const restore = document.createElement('button');
       restore.type = 'button';
       restore.className = 'terminal-window__restore';
-      restore.innerHTML = `🗔 <strong>${title}</strong> <span class="terminal-window__restore-status">— fechada, clique para reabrir</span>`;
+      restore.innerHTML = `<strong>${title}</strong> <span class="terminal-window__restore-status">— fechada, clique para reabrir</span>`;
       restore.addEventListener('click', () => restore.replaceWith(win));
       win.replaceWith(restore);
     }
