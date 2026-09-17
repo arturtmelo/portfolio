@@ -665,18 +665,20 @@ code { font-family: var(--font-mono); color: var(--green); }
   position: relative !important;
   width: min(90vw, 900px) !important;
   max-width: none !important;
-  height: min(78vh, 640px) !important;
-  max-height: 100%;
+  height: auto;
+  max-height: min(85vh, 640px);
   display: flex;
   flex-direction: column;
   animation: maximizeIn .25s cubic-bezier(.2,.9,.2,1);
 }
+/* content hugs its own height (proportional modal); only shrinks + scrolls
+   once it hits the container's max-height cap */
 .terminal-window--maximized .terminal-window__body,
 .terminal-window--maximized .terminal-window__body--interactive,
 .terminal-window--maximized .game-page,
 .terminal-window--maximized .project-card__body,
 .terminal-window--maximized .git-log__body {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
   height: auto !important;
@@ -685,28 +687,6 @@ code { font-family: var(--font-mono); color: var(--green); }
   from { transform: scale(.92); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
-
-/* themed close button — lives inside the maximized window, centered below it */
-.max-close-btn {
-  flex-shrink: 0;
-  align-self: center;
-  margin-top: .85rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: var(--bg-card);
-  border: 1px solid var(--green);
-  color: var(--green);
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 1rem;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background .2s ease, color .2s ease;
-}
-.max-close-btn:hover { background: var(--green); color: #05060a; }
 
 /* closed: replaced entirely by a small reopen chip */
 .terminal-window__restore {
@@ -1467,7 +1447,7 @@ kbd {
   /* kill every decorative / interactive-only layer */
   #matrix-canvas, .scanlines, .cursor-dot, .cursor-ring, .boot,
   .nav, .nav__mobile, .scroll-hint, .hero__bg-glow, .hero__cta, .hero__stats,
-  .side-links, .back-to-top, .whatsapp-btn, .max-close-btn, .projects__filters, .contact-card__copy,
+  .side-links, .back-to-top, .whatsapp-btn, .projects__filters, .contact-card__copy,
   .toast-stack, .palette-backdrop, .secret-overlay, .terminal-window-max-backdrop,
   #terminal, #playground, .footer, .konami-hint,
   .terminal-window__bar, .project-card .terminal-window__bar,

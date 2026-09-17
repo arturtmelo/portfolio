@@ -503,7 +503,6 @@ function scrambleText(el, finalText, duration = 650) {
 
 /* ---------- functional window controls (yellow = minimize, red = close) ---------- */
 let maxBackdrop = null;
-let maxCloseBtn = null;
 let currentMaximized = null;
 let maxOriginalParent = null;
 let maxOriginalNextSibling = null;
@@ -516,20 +515,12 @@ function ensureMaxBackdrop() {
   // only restore when the backdrop itself is clicked, not the window it now contains
   maxBackdrop.addEventListener('click', (e) => { if (e.target === maxBackdrop) restoreMaximized(); });
 
-  maxCloseBtn = document.createElement('button');
-  maxCloseBtn.type = 'button';
-  maxCloseBtn.className = 'max-close-btn';
-  maxCloseBtn.setAttribute('aria-label', 'fechar janela maximizada');
-  maxCloseBtn.textContent = '✕';
-  maxCloseBtn.addEventListener('click', restoreMaximized);
-
   return maxBackdrop;
 }
 
 function restoreMaximized() {
   if (!currentMaximized) return;
   currentMaximized.classList.remove('terminal-window--maximized');
-  maxCloseBtn.remove();
   if (maxOriginalNextSibling) {
     maxOriginalParent.insertBefore(currentMaximized, maxOriginalNextSibling);
   } else if (maxOriginalParent) {
@@ -587,7 +578,6 @@ function restoreMaximized() {
         maxOriginalNextSibling = win.nextElementSibling;
         const backdrop = ensureMaxBackdrop();
         backdrop.appendChild(win);
-        win.appendChild(maxCloseBtn);
         backdrop.classList.add('open');
         lockScroll();
         playMaximize();
@@ -974,8 +964,6 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
       print(`comando não encontrado: <span class="accent">${cmd}</span>. digite <span class="accent">help</span>.`);
     }
   }
-
-  print('Digite <span class="accent">help</span> para ver os comandos disponíveis.');
 
   input.addEventListener('keydown', (e) => {
     if (e.key.length === 1) playClick();
