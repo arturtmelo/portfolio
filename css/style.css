@@ -755,9 +755,9 @@ code { font-family: var(--font-mono); color: var(--green); }
 }
 /* same color shimmer everywhere, but each icon gets its own bit of motion
    on top so "formação", "foco atual" and "idiomas" read as distinct */
-.fact-card__icon--gradcap { animation: factIconGradient 9s ease infinite, gradcapToss 6s ease-in-out infinite; }
-.fact-card__icon--brain { animation: factIconGradient 10s ease infinite, brainPulse 4.5s ease-in-out infinite; }
-.fact-card__icon--globe { animation: factIconGradient 11s ease infinite, globeSpin 18s linear infinite; }
+.fact-card__icon--gradcap { animation: factIconGradient 13s ease infinite, gradcapToss 9s ease-in-out infinite; }
+.fact-card__icon--brain { animation: factIconGradient 14s ease infinite, brainPulse 7s ease-in-out infinite; }
+.fact-card__icon--globe { animation: factIconGradient 15s ease infinite, globeSpin 42s linear infinite; }
 @keyframes factIconGradient {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
