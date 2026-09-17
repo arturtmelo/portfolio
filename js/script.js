@@ -1006,7 +1006,11 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     playClick();
     execute(input.value);
     input.value = '';
-    input.focus();
+    // on touch devices, dismiss the virtual keyboard after sending a command
+    // instead of refocusing — otherwise it keeps covering half the screen,
+    // right where the reply they just asked for needs to be readable
+    if (isCoarsePointer) input.blur();
+    else input.focus();
   });
 
   terminalRunCommand = execute;
