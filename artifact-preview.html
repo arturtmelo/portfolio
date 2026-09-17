@@ -308,8 +308,8 @@
   <!-- TERMINAL PLAYGROUND -->
   <section id="terminal" class="section terminal-section">
     <p class="section__tag">04 // interativo</p>
-    <h2 class="section__title">um terminal de verdade</h2>
-    <p class="terminal-section__hint">digite <code>help</code> e explore. sim, ele funciona de verdade.</p>
+    <h2 class="section__title">terminal de verdade</h2>
+    <p class="terminal-section__hint">digite <code>help</code> e explore.</p>
 
     <div class="terminal-window terminal-window--big reveal" id="fakeTerminal">
       <div class="terminal-window__bar">
@@ -317,7 +317,7 @@
         <span class="terminal-window__title">artur@dev: ~</span>
       </div>
       <div class="terminal-window__body terminal-window__body--interactive" id="termOutput">
-        <p>Bem-vindo(a) ao sistema de Artur. Digite <span class="accent">help</span> para ver os comandos disponíveis.</p>
+        <p>Bem-vindo(a) ao sistema. Digite <span class="accent">help</span> para ver os comandos disponíveis.</p>
       </div>
       <form class="terminal-input-row" id="termForm">
         <span class="prompt">artur@dev:~$</span>
@@ -351,11 +351,14 @@
           <div class="snake__top">
             <span>pontuação: <b id="snakeScore" class="tabular">0</b></span>
             <span>recorde: <b id="snakeBest" class="tabular">0</b></span>
-            <select id="snakeFoodMode" class="snake__select" aria-label="quantidade de comidas">
-              <option value="5" selected>5 ⬡</option>
-              <option value="10">10 ⬡</option>
-              <option value="32">32 ⬡</option>
-            </select>
+            <span class="snake__food-select">
+              <span class="snake__food-icon" aria-hidden="true"></span>
+              <select id="snakeFoodMode" class="snake__select" aria-label="quantidade de comidas">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="32">32</option>
+              </select>
+            </span>
           </div>
           <div class="snake__canvas-wrap">
             <canvas id="snakeCanvas" width="560" height="560" aria-label="jogo da cobrinha"></canvas>
