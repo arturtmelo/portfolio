@@ -505,21 +505,23 @@ function scrambleText(el, finalText, duration = 650) {
 let maxBackdrop = null;
 let maxCloseBtn = null;
 let currentMaximized = null;
+let maxOriginalParent = null;
+let maxOriginalNextSibling = null;
 
 function ensureMaxBackdrop() {
   if (maxBackdrop) return maxBackdrop;
   maxBackdrop = document.createElement('div');
   maxBackdrop.className = 'terminal-window-max-backdrop';
   document.body.appendChild(maxBackdrop);
-  maxBackdrop.addEventListener('click', restoreMaximized);
+  // only restore when the backdrop itself is clicked, not the window it now contains
+  maxBackdrop.addEventListener('click', (e) => { if (e.target === maxBackdrop) restoreMaximized(); });
 
   maxCloseBtn = document.createElement('button');
   maxCloseBtn.type = 'button';
   maxCloseBtn.className = 'max-close-btn';
   maxCloseBtn.setAttribute('aria-label', 'fechar janela maximizada');
-  maxCloseBtn.innerHTML = '✕ <span>fechar</span>';
+  maxCloseBtn.textContent = '✕';
   maxCloseBtn.addEventListener('click', restoreMaximized);
-  document.body.appendChild(maxCloseBtn);
 
   return maxBackdrop;
 }
@@ -527,9 +529,16 @@ function ensureMaxBackdrop() {
 function restoreMaximized() {
   if (!currentMaximized) return;
   currentMaximized.classList.remove('terminal-window--maximized');
+  maxCloseBtn.remove();
+  if (maxOriginalNextSibling) {
+    maxOriginalParent.insertBefore(currentMaximized, maxOriginalNextSibling);
+  } else if (maxOriginalParent) {
+    maxOriginalParent.appendChild(currentMaximized);
+  }
   currentMaximized = null;
+  maxOriginalParent = null;
+  maxOriginalNextSibling = null;
   maxBackdrop?.classList.remove('open');
-  maxCloseBtn?.classList.remove('open');
   unlockScroll();
   playRestore();
 }
@@ -570,12 +579,16 @@ function restoreMaximized() {
       function toggleMaximize(e) {
         e.stopPropagation();
         if (win === currentMaximized) { restoreMaximized(); return; }
-        if (currentMaximized) currentMaximized.classList.remove('terminal-window--maximized');
+        if (currentMaximized) restoreMaximized(); // only one window maximized at a time
         win.classList.remove('terminal-window--minimized'); // can't be minimized and maximized at once
         win.classList.add('terminal-window--maximized');
         currentMaximized = win;
-        ensureMaxBackdrop().classList.add('open');
-        maxCloseBtn.classList.add('open');
+        maxOriginalParent = win.parentElement;
+        maxOriginalNextSibling = win.nextElementSibling;
+        const backdrop = ensureMaxBackdrop();
+        backdrop.appendChild(win);
+        win.appendChild(maxCloseBtn);
+        backdrop.classList.add('open');
         lockScroll();
         playMaximize();
       }

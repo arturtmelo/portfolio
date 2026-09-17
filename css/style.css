@@ -642,7 +642,10 @@ code { font-family: var(--font-mono); color: var(--green); }
   color: var(--yellow);
 }
 
-/* maximized: the green dot pops the window into a focused, oversized view */
+/* maximized: the green dot pops the window into a focused, oversized view.
+   The window is physically moved inside this backdrop while maximized, so
+   plain flexbox centers it — no fixed-position top/left/transform math
+   that could fight with scroll position or other transforms on the page. */
 .terminal-window-max-backdrop {
   position: fixed;
   inset: 0;
@@ -651,25 +654,28 @@ code { font-family: var(--font-mono); color: var(--green); }
   backdrop-filter: blur(3px);
   opacity: 0;
   visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
   transition: opacity .2s ease, visibility .2s ease;
 }
 .terminal-window-max-backdrop.open { opacity: 1; visibility: visible; }
 .terminal-window.terminal-window--maximized {
-  position: fixed !important;
-  inset: 0 !important;
-  margin: auto !important;
-  z-index: 9001;
+  position: relative !important;
   width: min(90vw, 900px) !important;
   max-width: none !important;
   height: min(78vh, 640px) !important;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   animation: maximizeIn .25s cubic-bezier(.2,.9,.2,1);
 }
 .terminal-window--maximized .terminal-window__body,
 .terminal-window--maximized .terminal-window__body--interactive,
-.terminal-window--maximized .snake,
-.terminal-window--maximized .project-card__body {
+.terminal-window--maximized .game-page,
+.terminal-window--maximized .project-card__body,
+.terminal-window--maximized .git-log__body {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
@@ -680,34 +686,27 @@ code { font-family: var(--font-mono); color: var(--green); }
   to { transform: scale(1); opacity: 1; }
 }
 
-/* themed close button shown above a maximized window */
+/* themed close button — lives inside the maximized window, centered below it */
 .max-close-btn {
-  position: fixed;
-  top: 1.1rem;
-  left: 50%;
-  z-index: 9002;
+  flex-shrink: 0;
+  align-self: center;
+  margin-top: .85rem;
   display: flex;
   align-items: center;
-  gap: .4rem;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   background: var(--bg-card);
   border: 1px solid var(--green);
   color: var(--green);
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: .8rem;
-  padding: .5rem .9rem;
-  border-radius: 8px;
+  font-size: 1rem;
+  border-radius: 50%;
   cursor: pointer;
-  opacity: 0;
-  visibility: hidden;
-  transform: translate(-50%, -6px);
-  transition: opacity .2s ease, transform .2s ease, background .2s ease, color .2s ease;
+  transition: background .2s ease, color .2s ease;
 }
-.max-close-btn.open { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 .max-close-btn:hover { background: var(--green); color: #05060a; }
-@media (max-width: 600px) {
-  .max-close-btn { top: .75rem; padding: .45rem .7rem; font-size: .75rem; }
-}
 
 /* closed: replaced entirely by a small reopen chip */
 .terminal-window__restore {
