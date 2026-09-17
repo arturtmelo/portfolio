@@ -893,7 +893,7 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     ls: () => print('recifle/&nbsp;&nbsp;rover.cs&nbsp;&nbsp;tutor_de_logica.md&nbsp;&nbsp;curriculo.pdf&nbsp;&nbsp;sonhos_grandes/'),
     date: () => print(new Date().toString()),
     banner: banner,
-    redbull: () => print('⚡ estourando uma lata de Red Bull... nível de energia restaurado.'),
+    redbull: () => print('<span class="term-icon term-icon--zap" aria-hidden="true"></span> estourando uma lata de Red Bull... nível de energia restaurado.'),
     joke: () => print(jokes[Math.floor(Math.random() * jokes.length)]),
     github: () => print('abrindo o github do Artur ... <a href="https://github.com/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
     linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/artur-tavares-de-melo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
@@ -969,10 +969,13 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
 
   terminalRunCommand = execute;
 
-  // autofocus when scrolled into view — but never steal the arrow keys while Snake is running
+  // autofocus when scrolled into view — but never steal the arrow keys while Snake is running,
+  // and never on touch devices (auto-opening the virtual keyboard on scroll is jarring there;
+  // mobile users tap the input themselves when they want to type)
+  const isCoarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
   const termSection = document.getElementById('terminal');
   const focusIo = new IntersectionObserver((entries) => {
-    entries.forEach(entry => { if (entry.isIntersecting && !snakeIsPlaying) input.focus({ preventScroll: true }); });
+    entries.forEach(entry => { if (entry.isIntersecting && !snakeIsPlaying && !isCoarsePointer) input.focus({ preventScroll: true }); });
   }, { threshold: 0.6 });
   if (termSection) focusIo.observe(termSection);
 })();
