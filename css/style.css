@@ -1085,8 +1085,6 @@ html { color-scheme: dark; }
 @media (pointer: coarse) {
   .project-card__links a { padding: .5rem 0; }
 }
-.project-card--ghost { border-style: dashed; display: flex; align-items: center; justify-content: center; min-height: 180px; }
-.project-card__body--center { text-align: center; }
 
 @media (max-width: 860px) {
   .projects__grid { grid-template-columns: 1fr; }
@@ -1985,7 +1983,6 @@ kbd {
   .project-card__file { display: none !important; }
   .tags span { background: #eee !important; color: #333 !important; border: 1pt solid #ddd; }
   .project-card__links a { color: #000 !important; }
-  .project-card--ghost { display: none !important; }
   .project-card__preview { display: none !important; }
 
   .contact { padding-bottom: 0 !important; }

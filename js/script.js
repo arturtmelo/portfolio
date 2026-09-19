@@ -2683,10 +2683,9 @@ document.addEventListener('keydown', (e) => {
   const grid = document.querySelector('.projects__grid');
   if (!grid) return;
   const cards = Array.from(grid.querySelectorAll('.project-card'));
-  const realCards = cards.filter((c) => !c.classList.contains('project-card--ghost'));
 
   const tags = new Set();
-  realCards.forEach((c) => c.querySelectorAll('.tags span').forEach((t) => tags.add(t.textContent.trim())));
+  cards.forEach((c) => c.querySelectorAll('.tags span').forEach((t) => tags.add(t.textContent.trim())));
   if (tags.size < 2) return;
 
   const bar = document.createElement('div');
@@ -2716,7 +2715,6 @@ document.addEventListener('keydown', (e) => {
     playClick();
     cards.forEach((c) => {
       if (!tag) { c.classList.remove('is-filtered-out'); return; }
-      if (c.classList.contains('project-card--ghost')) { c.classList.add('is-filtered-out'); return; }
       const cardTags = Array.from(c.querySelectorAll('.tags span')).map((t) => t.textContent.trim());
       c.classList.toggle('is-filtered-out', !cardTags.includes(tag));
     });
