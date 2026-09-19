@@ -315,6 +315,9 @@ html { color-scheme: dark; }
 .ui-icon--eye { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z'/%3E%3Ccircle cx='12' cy='12' r='2.8'/%3E%3C/svg%3E"); }
 .ui-icon--shield { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.2L19.5 6v5.6c0 4.4-3 7.7-7.5 9.2-4.5-1.5-7.5-4.8-7.5-9.2V6z'/%3E%3Cpath d='M9.6 9.8l4.8 4.8M14.4 9.8l-4.8 4.8'/%3E%3C/svg%3E"); }
 
+.ui-icon--expand { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.5 4H20v5.5'/%3E%3Cpath d='M9.5 20H4v-5.5'/%3E%3Cpath d='M20 4l-6.6 6.6'/%3E%3Cpath d='M4 20l6.6-6.6'/%3E%3C/svg%3E"); }
+.ui-icon--close { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12'/%3E%3Cpath d='M18 6L6 18'/%3E%3C/svg%3E"); }
+
 /* ---------- nav ---------- */
 .nav {
   position: fixed;
@@ -1415,7 +1418,7 @@ kbd {
 }
 .snake__top {
   width: 100%;
-  max-width: 560px;
+  max-width: 460px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1484,7 +1487,7 @@ kbd {
 .snake__canvas-wrap {
   position: relative;
   width: 100%;
-  max-width: 560px;
+  max-width: 460px;
 }
 #snakeCanvas {
   display: block;
@@ -1499,7 +1502,7 @@ kbd {
 #snakeCanvas.is-playing {
   touch-action: pinch-zoom; /* dragging steers the snake; only suppress panning once actually playing */
 }
-.snake__hint { color: var(--muted); font-size: .75rem; text-align: center; max-width: 560px; }
+.snake__hint { color: var(--muted); font-size: .75rem; text-align: center; max-width: 460px; }
 .snake__hint--touch { display: none; }
 @media (pointer: coarse) {
   .snake__hint--desktop { display: none; }
@@ -1526,6 +1529,137 @@ kbd {
 .snake__dpad button[data-dir="right"] { grid-column: 3; grid-row: 2; }
 @media (pointer: coarse) {
   .snake__dpad { display: grid; }
+}
+
+.snake__zoom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .4rem .55rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s ease;
+}
+.snake__zoom:hover { border-color: var(--green); }
+.snake__zoom .ui-icon { width: 16px; height: 16px; vertical-align: 0; }
+
+/* ---------- snake: zoomed view ----------
+   The .snake block is moved into this overlay (so no transformed ancestor can trap
+   position:fixed) — automatically on touch devices when a game starts, or with the
+   expand button anywhere. The board grows to the biggest square that fits. */
+.snake-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(.75rem, env(safe-area-inset-top)) max(.75rem, env(safe-area-inset-right)) max(.75rem, env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left));
+  background: rgba(3,4,7,.88);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, visibility 0s linear .2s; /* on close, hide only once the fade is done */
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+/* on open it is visible at once (so its window can take focus straight away); only the opacity fades in */
+.snake-zoom.open { opacity: 1; visibility: visible; transition: opacity .2s ease, visibility 0s; }
+@media (prefers-reduced-motion: reduce) {
+  .snake-zoom, .snake-zoom.open { transition: none; }
+}
+.snake-zoom__window {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 760px);
+  height: min(100%, 860px);
+  outline: none;
+}
+.snake-zoom__window .terminal-window__bar { flex-shrink: 0; padding: .4rem .5rem .4rem .9rem; }
+/* only the red dot does anything here (it closes); the others are just part of the window chrome */
+.snake-zoom__window .dot--yellow,
+.snake-zoom__window .dot--green { opacity: .35; pointer-events: none; cursor: default; }
+.snake-zoom__close {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 36px;
+  padding: .3rem .75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  cursor: pointer;
+  transition: border-color .15s ease;
+}
+.snake-zoom__close:hover { border-color: var(--red); }
+.snake-zoom__close .ui-icon { width: 14px; height: 14px; vertical-align: 0; }
+
+.snake-zoom .snake {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  padding: .9rem 1rem 1rem;
+  gap: .75rem;
+  justify-content: center; /* spare height is shared around the whole group, not left as a gap above the board */
+}
+.snake-zoom .snake__top,
+.snake-zoom .snake__hint { max-width: none; }
+.snake-zoom .snake__zoom { display: none; }
+.snake-zoom .snake__canvas-wrap { flex: 0 0 auto; width: min(100%, 60vh); max-width: none; }
+/* where container units exist, the wrap is a full-width square that gives up height (never
+   overflows) when the screen is short, and the canvas is the largest square inside it, centred */
+@supports (container-type: size) {
+  .snake-zoom .snake__canvas-wrap { flex: 0 1 auto; min-height: 0; width: 100%; aspect-ratio: 1 / 1; container-type: size; }
+  .snake-zoom #snakeCanvas {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(100cqw, 100cqh);
+  }
+}
+.snake-zoom .snake__dpad {
+  --pad: clamp(48px, 7.5vh, 66px); /* big thumb targets, but not so big they squeeze the board on a short screen */
+  grid-template-columns: repeat(3, var(--pad));
+  grid-template-rows: repeat(2, var(--pad));
+  gap: .5rem;
+}
+.snake-zoom .snake__dpad button { font-size: 1.3rem; }
+@media (max-height: 700px) {
+  .snake-zoom .snake__hint { display: none; } /* the controls speak for themselves; the room goes to the board */
+}
+
+/* phones: edge to edge, no rounded window, so the board can use the full width */
+@media (max-width: 600px) {
+  .snake-zoom {
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  }
+  .snake-zoom__window { width: 100%; height: 100%; border-width: 0; border-radius: 0; }
+  .snake-zoom .snake { padding: .6rem .5rem .8rem; }
+}
+/* landscape phones: board on the left, score and controls stacked on the right */
+@media (orientation: landscape) and (max-height: 520px) {
+  .snake-zoom { padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+  .snake-zoom__window { width: 100%; height: 100%; border-width: 0; border-radius: 0; }
+  .snake-zoom .snake {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
+    gap: .5rem 1rem;
+    align-items: start;
+    padding: .5rem .75rem;
+  }
+  .snake-zoom .snake__canvas-wrap { grid-column: 1; grid-row: 1 / span 2; height: 100%; aspect-ratio: auto; align-self: stretch; }
+  .snake-zoom .snake__top { grid-column: 2; grid-row: 1; width: auto; flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .snake-zoom .snake__hint { display: none; }
+  .snake-zoom .snake__dpad { grid-column: 2; grid-row: 2; align-self: end; --pad: 48px; }
 }
 
 /* ---------- playground: typing race (type the snippet, fast & correct) ---------- */
@@ -1676,7 +1810,7 @@ kbd {
   #matrix-canvas, .scanlines, .cursor-dot, .cursor-ring, .boot,
   .nav, .nav__mobile, .scroll-hint, .hero__bg-glow, .hero__cta, .hero__stats,
   .side-links, .back-to-top, .whatsapp-btn, .projects__filters, .contact-card__copy,
-  .toast-stack, .palette-backdrop, .secret-overlay, .terminal-window-max-backdrop,
+  .toast-stack, .palette-backdrop, .secret-overlay, .terminal-window-max-backdrop, .snake-zoom,
   #terminal, #playground, .footer, .konami-hint,
   .terminal-window__bar, .project-card .terminal-window__bar,
   .git-log__node, .git-log__commit::before, .git-log__commit--head,

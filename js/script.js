@@ -741,13 +741,16 @@ function restoreMaximized() {
 })();
 
 document.addEventListener('keydown', (e) => {
-  // only close the topmost thing: leave a maximized window alone if the
+  // only close the topmost thing: leave a maximized window (or the zoomed Snake) alone if the
   // command palette, achievements, or shortcuts modal is still open above it
-  if (e.key !== 'Escape' || !currentMaximized) return;
+  // (defaultPrevented: the palette's own input already used this Esc to close itself)
+  if (e.key !== 'Escape' || e.defaultPrevented || !(currentMaximized || closeSnakeZoom)) return;
   const paletteOpen = paletteEl?.classList.contains('open');
   const achModalOpen = achModalEl?.classList.contains('open');
   const shortcutsOpen = shortcutsModalEl?.classList.contains('open');
-  if (!paletteOpen && !achModalOpen && !shortcutsOpen) restoreMaximized();
+  if (paletteOpen || achModalOpen || shortcutsOpen) return;
+  if (closeSnakeZoom) closeSnakeZoom(); // it sits above a maximized window, so it goes first
+  else restoreMaximized();
 });
 
 /* ---------- skills: interactive graph (replaces plain progress bars) ---------- */
@@ -1196,6 +1199,7 @@ document.addEventListener('keydown', (e) => {
 /* ---------- interactive terminal ---------- */
 let terminalRunCommand = null;
 let snakeIsPlaying = false; // lets the terminal's autofocus (below) step aside while Snake needs the arrow keys
+let closeSnakeZoom = null;  // set only while the zoomed Snake overlay is open; Esc calls it
 
 (function terminal() {
   const output = document.getElementById('termOutput');
@@ -1482,8 +1486,12 @@ function openPalette() {
 }
 
 function closePalette() {
-  if (paletteEl) paletteEl.classList.remove('open');
+  // already closed: don't release the scroll lock a second time (its input used to keep focus
+  // after closing, so a later Esc landed here again and unlocked the page under an open modal)
+  if (!paletteEl || !paletteEl.classList.contains('open')) return;
+  paletteEl.classList.remove('open');
   unlockScroll();
+  document.getElementById('paletteInput')?.blur();
 }
 
 document.addEventListener('keydown', (e) => {
@@ -1519,7 +1527,11 @@ document.addEventListener('keydown', (e) => {
 
   const ctx = canvas.getContext('2d');
   const GRID = 20;
-  const CELL = canvas.width / GRID;
+  // everything is drawn in a fixed 560-unit space; resizeCanvas() sizes the real pixel
+  // buffer to how big the board is actually shown (so it stays sharp when zoomed) and sets the scale
+  const SIZE = 560;
+  const CELL = SIZE / GRID;
+  const isCoarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
 
   let snake, dir, nextDir, foods, score, running, loopId, crashCell, isGameOver = false;
   let best = 0;
@@ -1584,15 +1596,17 @@ document.addEventListener('keydown', (e) => {
     const red = themeColor('--red', '#ff5f56');
     const border = themeColor('--border', '#1c2230');
     const t = performance.now();
+    const scale = canvas.width / SIZE;
+    const blur = (px) => px * scale; // shadowBlur is in device pixels, so keep it in proportion to the board
 
     ctx.fillStyle = '#0a0e17';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, SIZE, SIZE);
 
     ctx.strokeStyle = border;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 / scale; // one device pixel
     for (let i = 1; i < GRID; i++) {
-      ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, canvas.height); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(canvas.width, i * CELL); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, SIZE); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(SIZE, i * CELL); ctx.stroke();
     }
 
     // food: a minimal hex "data node" — one accent color, clean lines, subtle pulse
@@ -1614,7 +1628,7 @@ document.addEventListener('keydown', (e) => {
 
       ctx.fillStyle = `rgba(${cyanRgb},.15)`;
       ctx.shadowColor = cyan;
-      ctx.shadowBlur = 4 + 6 * foodPulse;
+      ctx.shadowBlur = blur(4 + 6 * foodPulse);
       ctx.fill();
       ctx.shadowBlur = 0;
 
@@ -1632,11 +1646,11 @@ document.addEventListener('keydown', (e) => {
       if (isHead) {
         ctx.fillStyle = cyan;
         ctx.shadowColor = cyan;
-        ctx.shadowBlur = 10 + 14 * headPulse;
+        ctx.shadowBlur = blur(10 + 14 * headPulse);
       } else {
         ctx.fillStyle = mixColor(cyan, green, trailT);
         ctx.shadowColor = green;
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = blur(5);
       }
       ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
     });
@@ -1644,14 +1658,14 @@ document.addEventListener('keydown', (e) => {
 
     if (gameOver) {
       ctx.fillStyle = 'rgba(0,0,0,.65)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, SIZE, SIZE);
 
       // the square the snake crashed into (only set on self-collision) lights up red
       if (crashCell) {
         const crashPulse = reduceMotion ? 1 : 0.7 + 0.3 * Math.sin(t / 120);
         ctx.fillStyle = red;
         ctx.shadowColor = red;
-        ctx.shadowBlur = 12 * crashPulse;
+        ctx.shadowBlur = blur(12 * crashPulse);
         ctx.fillRect(crashCell.x * CELL + 1, crashCell.y * CELL + 1, CELL - 2, CELL - 2);
         ctx.shadowBlur = 0;
         ctx.strokeStyle = red;
@@ -1662,11 +1676,21 @@ document.addEventListener('keydown', (e) => {
       ctx.textAlign = 'center';
       ctx.fillStyle = green;
       ctx.font = 'bold 26px "JetBrains Mono", monospace';
-      ctx.fillText('game over', canvas.width / 2, canvas.height / 2 - 100);
+      ctx.fillText('game over', SIZE / 2, SIZE / 2 - 100);
       ctx.fillStyle = '#dfe8f0';
       ctx.font = '16px "JetBrains Mono", monospace';
-      ctx.fillText(`você fez ${score} pontos`, canvas.width / 2, canvas.height / 2 - 70);
+      ctx.fillText(`você fez ${score} pontos`, SIZE / 2, SIZE / 2 - 70);
     }
+  }
+
+  // match the pixel buffer to the size the board is shown at (capped at 2x: past that it only costs)
+  function resizeCanvas() {
+    const shown = canvas.clientWidth;
+    if (!shown) return; // its game tab isn't the visible one
+    const px = Math.round(shown * Math.min(window.devicePixelRatio || 1, 2));
+    if (canvas.width !== px) { canvas.width = px; canvas.height = px; } // resizing also resets the context state
+    ctx.setTransform(px / SIZE, 0, 0, px / SIZE, 0, 0);
+    draw(isGameOver);
   }
 
   function tick() {
@@ -1698,17 +1722,21 @@ document.addEventListener('keydown', (e) => {
     draw(false);
   }
 
-  function endGame() {
+  function stopRun() {
     running = false;
     snakeIsPlaying = false;
     canvas.classList.remove('is-playing');
     clearInterval(loopId);
-    playGameOver();
     if (score > best) {
       best = score;
       bestEl.textContent = best;
       try { localStorage.setItem('artur-snake-best', String(best)); } catch (e) {}
     }
+  }
+
+  function endGame() {
+    stopRun();
+    playGameOver();
     isGameOver = true;
     draw(true);
     playBtn.textContent = '⟲';
@@ -1716,9 +1744,22 @@ document.addEventListener('keydown', (e) => {
     playBtn.hidden = false;
   }
 
+  // leaving mid-game (closing the zoomed view): no game-over fanfare, back to the idle board
+  function abortRun() {
+    stopRun();
+    isGameOver = false;
+    resetState();
+    draw(false);
+    playBtn.textContent = '▶';
+    playBtn.setAttribute('aria-label', 'jogar');
+    playBtn.hidden = false;
+  }
+
   function start() {
     // an auto-focused terminal input elsewhere on the page would otherwise eat the arrow keys
     if (document.activeElement && document.activeElement.tagName === 'INPUT') document.activeElement.blur();
+    // on a phone the board is small and the page scrolls under the thumb: play zoomed
+    if (isCoarsePointer) openZoom();
     resetState();
     running = true;
     isGameOver = false;
@@ -1748,30 +1789,115 @@ document.addEventListener('keydown', (e) => {
     if (mapped) { e.preventDefault(); setDir(mapped[0], mapped[1]); }
   });
 
+  // pointerdown, not click: a turn should land the moment the thumb does (click waits for release).
+  // A keyboard-activated button still arrives as a click, with detail 0.
   const DPAD_MAP = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   dpad?.querySelectorAll('button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const d = DPAD_MAP[btn.dataset.dir];
-      if (d) setDir(d[0], d[1]);
-    });
+    const turn = () => { const d = DPAD_MAP[btn.dataset.dir]; if (d) setDir(d[0], d[1]); };
+    btn.addEventListener('pointerdown', turn);
+    btn.addEventListener('click', (e) => { if (e.detail === 0) turn(); });
   });
 
-  let touchStart = null;
-  canvas.addEventListener('touchstart', (e) => { touchStart = e.touches[0]; }, { passive: true });
-  canvas.addEventListener('touchend', (e) => {
-    if (!touchStart) return;
-    const dx = e.changedTouches[0].clientX - touchStart.clientX;
-    const dy = e.changedTouches[0].clientY - touchStart.clientY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) setDir(dx > 0 ? 1 : -1, 0);
-    else if (Math.abs(dy) > 10) setDir(0, dy > 0 ? 1 : -1);
-    touchStart = null;
-  });
+  // Steering by swipe: a turn happens as soon as the finger has travelled far enough, and the
+  // anchor then resets, so one long drag can turn several times. Listens on the canvas normally
+  // and on the whole overlay while zoomed (a bigger target than the board).
+  const SWIPE_PX = 22;
+  let touchAnchor = null;
+  function steerFrom(x, y, minPx) {
+    if (!touchAnchor) return false;
+    const dx = x - touchAnchor.x, dy = y - touchAnchor.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < minPx) return false;
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
+    else setDir(0, dy > 0 ? 1 : -1);
+    touchAnchor = { x, y };
+    return true;
+  }
+  // while zoomed, the canvas' own events also bubble to the overlay — only one of them should act
+  const ignoreCanvasWhileZoomed = (e) => zoomEl?.classList.contains('open') && e.currentTarget === canvas;
+  function bindSwipe(el, passive) {
+    el.addEventListener('touchstart', (e) => {
+      if (ignoreCanvasWhileZoomed(e) || e.touches.length !== 1) return;
+      touchAnchor = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      if (ignoreCanvasWhileZoomed(e)) return;
+      if (running) steerFrom(e.touches[0].clientX, e.touches[0].clientY, SWIPE_PX);
+      if (!passive && running) e.preventDefault(); // no page overscroll / pull-to-refresh mid-game
+    }, { passive });
+    el.addEventListener('touchend', (e) => {
+      if (ignoreCanvasWhileZoomed(e)) return;
+      steerFrom(e.changedTouches[0].clientX, e.changedTouches[0].clientY, 10); // a short flick still counts
+      touchAnchor = null;
+    }, { passive: true });
+  }
+  bindSwipe(canvas, true);
+
+  // ---- zoomed view: the whole game block moves into a full-screen overlay ----
+  const snakeRoot = canvas.closest('.snake');
+  const zoomBtn = document.getElementById('snakeZoom');
+  let zoomEl = null;
+  let zoomMarker = null;   // where the block lives on the page, so it can go back
+  let zoomReturnFocus = null;
+
+  function buildZoom() {
+    zoomEl = document.createElement('div');
+    zoomEl.className = 'snake-zoom';
+    zoomEl.setAttribute('role', 'dialog');
+    zoomEl.setAttribute('aria-modal', 'true');
+    zoomEl.setAttribute('aria-label', 'Snake ampliado');
+    zoomEl.innerHTML = `
+      <div class="terminal-window snake-zoom__window" tabindex="-1">
+        <div class="terminal-window__bar">
+          <span class="dot dot--red" aria-hidden="true"></span><span class="dot dot--yellow" aria-hidden="true"></span><span class="dot dot--green" aria-hidden="true"></span>
+          <span class="terminal-window__title">snake.js</span>
+          <button type="button" class="snake-zoom__close" aria-label="fechar (Esc)"><span class="ui-icon ui-icon--close" aria-hidden="true"></span>fechar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(zoomEl);
+    zoomEl.querySelector('.snake-zoom__close').addEventListener('click', closeZoom);
+    zoomEl.querySelector('.dot--red').addEventListener('click', closeZoom);
+    zoomEl.addEventListener('click', (e) => { if (e.target === zoomEl) closeZoom(); }); // the dim margin, on wide screens
+    bindSwipe(zoomEl, false);
+  }
+
+  function openZoom() {
+    if (zoomEl?.classList.contains('open')) return;
+    if (!zoomEl) buildZoom();
+    zoomReturnFocus = document.activeElement;
+    zoomMarker = document.createComment('snake');
+    snakeRoot.before(zoomMarker);
+    zoomEl.querySelector('.snake-zoom__window').appendChild(snakeRoot);
+    void zoomEl.offsetWidth; // so the fade-in runs the first time too
+    zoomEl.classList.add('open');
+    lockScroll();
+    closeSnakeZoom = closeZoom;
+    zoomBtn?.setAttribute('aria-expanded', 'true');
+    zoomEl.querySelector('.snake-zoom__window').focus({ preventScroll: true });
+    resizeCanvas();
+  }
+
+  function closeZoom() {
+    if (!zoomEl?.classList.contains('open')) return;
+    if (running) abortRun();
+    zoomEl.classList.remove('open');
+    zoomMarker.replaceWith(snakeRoot);
+    zoomMarker = null;
+    unlockScroll();
+    closeSnakeZoom = null;
+    zoomBtn?.setAttribute('aria-expanded', 'false');
+    const back = zoomReturnFocus && document.contains(zoomReturnFocus) && !zoomReturnFocus.hidden ? zoomReturnFocus : zoomBtn;
+    back?.focus?.({ preventScroll: true });
+    zoomReturnFocus = null;
+    resizeCanvas();
+  }
+  zoomBtn?.addEventListener('click', openZoom);
 
   playBtn.addEventListener('click', start);
 
   // idle preview before the first game
   resetState();
-  draw(false);
+  resizeCanvas();
+  if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(canvas);
 
   // a continuous render loop keeps the glow/pulse effects alive between
   // movement ticks (and while idle, before the first game starts)
