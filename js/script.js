@@ -160,6 +160,9 @@ const ACHIEVEMENTS = {
   memory: { label: 'Memória de Elefante', desc: 'Completou o jogo da memória no playground.' },
 };
 
+// UI icons are masked SVGs filled with the site palette (see .ui-icon in the CSS)
+const uiIcon = (name) => `<span class="ui-icon ui-icon--${name}" aria-hidden="true"></span>`;
+
 let unlocked = new Set();
 try { unlocked = new Set(JSON.parse(localStorage.getItem('artur-achievements') || '[]')); } catch (e) {}
 
@@ -167,6 +170,7 @@ let trophyBtn = null;
 function updateTrophyBadge() {
   if (!trophyBtn) return;
   trophyBtn.querySelector('.trophy__count').textContent = `${unlocked.size}/${Object.keys(ACHIEVEMENTS).length}`;
+  trophyBtn.classList.toggle('is-complete', unlocked.size === Object.keys(ACHIEVEMENTS).length);
 }
 
 let toastStack = null;
@@ -180,13 +184,13 @@ function ensureToastStack() {
 
 function copyToClipboard(text, { icon, successLabel, successDesc } = {}) {
   const onFail = () => showToast({
-    icon: '⚠️',
+    icon: 'warn',
     label: 'Não copiou automaticamente',
     desc: 'Seu navegador bloqueou a área de transferência — selecione e copie o texto manualmente.'
   });
   if (!navigator.clipboard?.writeText) { onFail(); return; }
   navigator.clipboard.writeText(text)
-    .then(() => showToast({ icon: icon || '📋', label: successLabel || 'Copiado!', desc: successDesc || 'Já está na sua área de transferência.' }))
+    .then(() => showToast({ icon: icon || 'clipboard', label: successLabel || 'Copiado!', desc: successDesc || 'Já está na sua área de transferência.' }))
     .catch(onFail);
 }
 
@@ -194,7 +198,7 @@ function showToast({ label, desc, icon }) {
   const stack = ensureToastStack();
   const el = document.createElement('div');
   el.className = 'toast';
-  el.innerHTML = `<span class="toast__icon">${icon || '🏆'}</span><span class="toast__body"><strong>${label}</strong><br>${desc}</span>`;
+  el.innerHTML = `<span class="toast__icon">${uiIcon(icon || 'trophy')}</span><span class="toast__body"><strong>${label}</strong><br>${desc}</span>`;
   stack.appendChild(el);
   requestAnimationFrame(() => el.classList.add('in'));
   setTimeout(() => {
@@ -212,7 +216,7 @@ function unlockAchievement(id) {
   updateTrophyBadge();
   if (unlocked.size === Object.keys(ACHIEVEMENTS).length) {
     setTimeout(() => showToast({
-      icon: '🎖️',
+      icon: 'medal',
       label: 'Sistema Totalmente Explorado',
       desc: 'Você encontrou todas as conquistas escondidas. Impressionante.'
     }), 900);
@@ -233,7 +237,7 @@ function openAchievementsModal() {
       <ul class="achievements-list">
         ${Object.entries(ACHIEVEMENTS).map(([id, a]) => `
           <li class="${unlocked.has(id) ? 'unlocked' : 'locked'}">
-            <span class="achievements-list__icon">${unlocked.has(id) ? '🏆' : '🔒'}</span>
+            <span class="achievements-list__icon">${uiIcon(unlocked.has(id) ? 'trophy' : 'lock')}</span>
             <span><strong>${a.label}</strong><br><span class="muted">${unlocked.has(id) ? a.desc : '???'}</span></span>
           </li>`).join('')}
       </ul>
@@ -1134,11 +1138,17 @@ document.addEventListener('keydown', (e) => {
   soundBtn.type = 'button';
   soundBtn.className = 'nav__iconbtn';
   soundBtn.setAttribute('aria-label', 'ativar ou desativar o som');
-  soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+  const paintSound = () => {
+    soundBtn.innerHTML = uiIcon(soundEnabled ? 'sound' : 'sound-off');
+    soundBtn.classList.toggle('is-off', !soundEnabled);
+    soundBtn.setAttribute('aria-pressed', String(soundEnabled));
+    soundBtn.title = soundEnabled ? 'Som ligado — clique para silenciar' : 'Som desligado — clique para ativar';
+  };
+  paintSound();
   soundBtn.addEventListener('click', () => {
     soundEnabled = !soundEnabled;
     try { localStorage.setItem('artur-sound', soundEnabled ? 'on' : 'off'); } catch (e) {}
-    soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+    paintSound();
     if (soundEnabled) playClick();
   });
 
@@ -1146,21 +1156,26 @@ document.addEventListener('keydown', (e) => {
   paletteBtn.type = 'button';
   paletteBtn.className = 'nav__iconbtn nav__iconbtn--kbd';
   paletteBtn.setAttribute('aria-label', 'Abrir paleta de comandos');
-  paletteBtn.innerHTML = '⌘ <span>K</span>';
+  // show the key people actually have: ⌘ on Apple devices, Ctrl everywhere else
+  const isApple = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent);
+  paletteBtn.innerHTML = isApple ? `${uiIcon('command')}<span>K</span>` : '<span>Ctrl</span><span>K</span>';
+  paletteBtn.title = isApple ? 'Paleta de comandos (⌘K)' : 'Paleta de comandos (Ctrl+K)';
   paletteBtn.addEventListener('click', () => openPalette());
 
   trophyBtn = document.createElement('button');
   trophyBtn.type = 'button';
   trophyBtn.className = 'nav__iconbtn nav__trophy';
   trophyBtn.setAttribute('aria-label', 'Ver conquistas');
-  trophyBtn.innerHTML = `🏆 <span class="trophy__count tabular">0/${Object.keys(ACHIEVEMENTS).length}</span>`;
+  trophyBtn.title = 'Conquistas';
+  trophyBtn.innerHTML = `${uiIcon('trophy')}<span class="trophy__count tabular">0/${Object.keys(ACHIEVEMENTS).length}</span>`;
   trophyBtn.addEventListener('click', () => openAchievementsModal());
 
   const shortcutsBtn = document.createElement('button');
   shortcutsBtn.type = 'button';
   shortcutsBtn.className = 'nav__iconbtn nav__iconbtn--kbd';
   shortcutsBtn.setAttribute('aria-label', 'Ver atalhos de teclado');
-  shortcutsBtn.textContent = '⌨';
+  shortcutsBtn.title = 'Atalhos de teclado';
+  shortcutsBtn.innerHTML = uiIcon('keyboard');
   shortcutsBtn.addEventListener('click', () => openShortcutsModal());
 
   controls.appendChild(soundBtn);
@@ -1340,7 +1355,7 @@ const PALETTE_ACTIONS = [
   ...Object.entries(THEMES).map(([key, t]) => ({
     label: `Tema: ${t.label}`,
     hint: 'cor cores aparência',
-    run: () => { applyTheme(key); unlockAchievement('theme'); showToast({ icon: '🎨', label: 'Tema alterado', desc: t.label }); }
+    run: () => { applyTheme(key); unlockAchievement('theme'); showToast({ icon: 'palette', label: 'Tema alterado', desc: t.label }); }
   })),
   {
     label: 'Jogar Snake', hint: 'jogo game playground cobrinha', run: () => {
