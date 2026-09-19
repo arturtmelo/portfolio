@@ -591,14 +591,18 @@
 
 <footer class="footer">
   <p><code>console.log("feito com &lt;3 e red bull");</code></p>
-  <p class="footer__small">&copy; <span id="year"></span> Artur — todos os direitos reservados. <span class="konami-hint">↑↑↓↓←→←→BA</span></p>
+  <p class="footer__small">&copy; <span id="year"></span> Artur — todos os direitos reservados. <button type="button" class="konami-hint" aria-label="abrir o controle do código Konami" title="toque para abrir o controle"><span class="ui-icon ui-icon--gamepad" aria-hidden="true"></span>↑↑↓↓←→←→BA</button></p>
 </footer>
 
-<div id="secretOverlay" class="secret-overlay">
+<div id="secretOverlay" class="secret-overlay" role="dialog" aria-modal="true" aria-label="Acesso concedido">
   <div class="secret-overlay__content">
     <p class="glitch" data-text="ACESSO CONCEDIDO">ACESSO CONCEDIDO</p>
     <p>Você encontrou o easter egg secreto. <span class="ui-icon ui-icon--snake" aria-hidden="true"></span> Parabéns, hacker.</p>
-    <button id="closeSecret" class="btn btn--ghost">fechar_(x)</button>
+    <p class="secret-overlay__lives">+30 vidas</p>
+    <div class="secret-overlay__actions">
+      <button type="button" id="secretTrophies" class="btn btn--ghost">ver conquistas</button>
+      <button type="button" id="closeSecret" class="btn btn--ghost">fechar_(x)</button>
+    </div>
   </div>
 </div>
 

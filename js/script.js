@@ -150,7 +150,7 @@ function playAchievementSound() {
 /* ---------- achievements + toasts ---------- */
 const ACHIEVEMENTS = {
   terminal: { label: 'Hacker Casual', desc: 'Rodou um comando no terminal.' },
-  konami: { label: 'Código Konami', desc: 'Digitou o código secreto do joystick.' },
+  konami: { label: 'Código Konami', desc: 'Digitou (ou tocou) o código secreto do joystick.' },
   logo5x: { label: 'Dedo Rápido', desc: 'Clicou 5x no logo em menos de um segundo.' },
   palette: { label: 'Power User', desc: 'Abriu a paleta de comandos (Ctrl+K).' },
   theme: { label: 'Decorador de Terminal', desc: 'Trocou o esquema de cores do site.' },
@@ -260,7 +260,7 @@ const SHORTCUTS = [
   { keys: ['Ctrl', 'K'], alt: '⌘K', desc: 'abrir a paleta de comandos' },
   { keys: ['?'], desc: 'abrir esta lista de atalhos' },
   { keys: ['Esc'], desc: 'fechar modais ou restaurar uma janela maximizada' },
-  { keys: ['↑', '↑', '↓', '↓', '←', '→', '←', '→', 'B', 'A'], desc: 'código Konami — você sabe o que fazer' },
+  { keys: ['↑', '↑', '↓', '↓', '←', '→', '←', '→', 'B', 'A'], desc: 'código Konami — no celular, toque em ↑↑↓↓←→←→BA no rodapé' },
   { keys: ['WASD'], alt: 'setas', desc: 'controlar o Snake, no playground' },
 ];
 function openShortcutsModal() {
@@ -746,12 +746,16 @@ document.addEventListener('keydown', (e) => {
   // only close the topmost thing: leave a maximized window (or the zoomed Snake) alone if the
   // command palette, achievements, or shortcuts modal is still open above it
   // (defaultPrevented: the palette's own input already used this Esc to close itself)
-  if (e.key !== 'Escape' || e.defaultPrevented || !(currentMaximized || closeSnakeZoom)) return;
+  if (e.key !== 'Escape' || e.defaultPrevented || !(currentMaximized || closeSnakeZoom || closeKonamiPad || closeSecretOverlay)) return;
   const paletteOpen = paletteEl?.classList.contains('open');
   const achModalOpen = achModalEl?.classList.contains('open');
   const shortcutsOpen = shortcutsModalEl?.classList.contains('open');
   if (paletteOpen || achModalOpen || shortcutsOpen) return;
-  if (closeSnakeZoom) closeSnakeZoom(); // it sits above a maximized window, so it goes first
+  // from the top of the stack down: the easter-egg screen, the Konami controller, the zoomed Snake (which
+  // sits above a maximized window), and last the maximized window itself
+  if (closeSecretOverlay) closeSecretOverlay();
+  else if (closeKonamiPad) closeKonamiPad();
+  else if (closeSnakeZoom) closeSnakeZoom();
   else restoreMaximized();
 });
 
@@ -1202,6 +1206,9 @@ document.addEventListener('keydown', (e) => {
 let terminalRunCommand = null;
 let snakeIsPlaying = false; // lets the terminal's autofocus (below) step aside while Snake needs the arrow keys
 let closeSnakeZoom = null;  // set only while the zoomed Snake overlay is open; Esc calls it
+let closeKonamiPad = null;  // same, for the Konami controller
+let closeSecretOverlay = null; // same, for the "acesso concedido" screen
+let openKonamiPad = null;   // set by the Konami code below; the terminal and the palette use it
 
 (function terminal() {
   const output = document.getElementById('termOutput');
@@ -1259,7 +1266,7 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     github: () => print('abrindo o github do Artur ... <a href="https://github.com/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
     linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
     sudo: () => print('Bonita tentativa. Você não está na lista de sudoers. Esse incidente será reportado. ' + uiIcon('shield')),
-    konami: () => print('tente digitar isso com o teclado: ↑ ↑ ↓ ↓ ← → ← → B A'),
+    konami: () => { print('código Konami: ↑ ↑ ↓ ↓ ← → ← → B A — abrindo o controle ' + uiIcon('gamepad')); openKonamiPad?.(); },
     theme: (args) => {
       const name = (args[0] || '').toLowerCase();
       if (THEMES[name]) {
@@ -1392,6 +1399,7 @@ const PALETTE_ACTIONS = [
       setTimeout(() => document.getElementById('snakePlay')?.click(), 500);
     }
   },
+  { label: 'Código Konami (controle na tela)', hint: 'konami secreto joystick easter egg gamepad', run: () => openKonamiPad?.() },
   {
     label: 'Contar uma piada', hint: 'joke terminal', run: () => {
       scrollToId('terminal');
@@ -1852,11 +1860,11 @@ document.addEventListener('keydown', (e) => {
         <div class="terminal-window__bar">
           <span class="dot dot--red" aria-hidden="true"></span><span class="dot dot--yellow" aria-hidden="true"></span><span class="dot dot--green" aria-hidden="true"></span>
           <span class="terminal-window__title">snake.js</span>
-          <button type="button" class="snake-zoom__close" aria-label="fechar (Esc)"><span class="ui-icon ui-icon--close" aria-hidden="true"></span>fechar</button>
+          <button type="button" class="overlay-close" aria-label="fechar (Esc)"><span class="ui-icon ui-icon--close" aria-hidden="true"></span>fechar</button>
         </div>
       </div>`;
     document.body.appendChild(zoomEl);
-    zoomEl.querySelector('.snake-zoom__close').addEventListener('click', closeZoom);
+    zoomEl.querySelector('.overlay-close').addEventListener('click', closeZoom);
     zoomEl.querySelector('.dot--red').addEventListener('click', closeZoom);
     zoomEl.addEventListener('click', (e) => { if (e.target === zoomEl) closeZoom(); }); // the dim margin, on wide screens
     bindSwipe(zoomEl, false);
@@ -2578,29 +2586,185 @@ document.addEventListener('keydown', (e) => {
   show(0);
 })();
 
-/* ---------- konami code easter egg ---------- */
-(function konami() {
-  const seq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-  let pos = 0;
+/* ---------- the secret overlay: the Konami code and five quick clicks on the logo both end up here ---------- */
+function openSecretOverlay() {
   const overlay = document.getElementById('secretOverlay');
-  const closeBtn = document.getElementById('closeSecret');
+  if (!overlay || overlay.classList.contains('open')) return;
+  const back = document.activeElement;
+  overlay.classList.add('open');
+  lockScroll();
+  closeSecretOverlay = () => {
+    overlay.classList.remove('open');
+    unlockScroll();
+    closeSecretOverlay = null;
+    if (back && document.contains(back) && !back.hidden) back.focus?.({ preventScroll: true });
+  };
+  document.getElementById('closeSecret')?.focus({ preventScroll: true });
+}
+(function secretOverlayControls() {
+  const overlay = document.getElementById('secretOverlay');
+  if (!overlay) return;
+  document.getElementById('closeSecret')?.addEventListener('click', () => closeSecretOverlay?.());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSecretOverlay?.(); });
+  document.getElementById('secretTrophies')?.addEventListener('click', () => { closeSecretOverlay?.(); openAchievementsModal(); });
+})();
+
+/* ---------- konami code: from the keyboard, or from the on-screen controller (the hint in the footer) ---------- */
+(function konami() {
+  const SEQ = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+  const TURN = { ArrowUp: 0, ArrowRight: 90, ArrowDown: 180, ArrowLeft: 270 }; // how far to turn the one "up" arrow icon
+  const NAMES = { ArrowUp: 'cima', ArrowDown: 'baixo', ArrowLeft: 'esquerda', ArrowRight: 'direita', b: 'B', a: 'A' };
+  const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
+  let pos = 0; // how much of the code has been entered, whichever way (keyboard and controller share it)
+  let padEl = null, seqEl = null, statusEl = null, slotEls = [], backTo = null, doneTimer = 0;
+
+  const padOpen = () => !!padEl && padEl.classList.contains('open');
+  const arrowIcon = (name) => `<span class="ui-icon ui-icon--arrow" style="--r:${TURN[name]}deg" aria-hidden="true"></span>`;
+
+  function say(text, kind) {
+    statusEl.className = `konami-pad__status${kind ? ` konami-pad__status--${kind}` : ''}`;
+    statusEl.textContent = text;
+  }
+
+  function paint(state) {
+    if (!padEl) return;
+    slotEls.forEach((s, i) => {
+      s.classList.toggle('is-done', i < pos);
+      s.classList.toggle('is-next', i === pos);
+    });
+    seqEl.classList.remove('is-wrong');
+    if (state === 'wrong') {
+      void seqEl.offsetWidth; // restart the shake
+      seqEl.classList.add('is-wrong');
+      say('errou — recomeça do começo', 'bad');
+    } else if (state === 'miss') {
+      say('a sequência começa com ↑', 'bad');
+    } else {
+      say(pos ? `${pos}/${SEQ.length} — continue` : 'toque na sequência, na ordem');
+    }
+  }
+
+  function complete() {
+    pos = 0;
+    unlockAchievement('konami');
+    if (padOpen()) {
+      slotEls.forEach((s) => { s.classList.add('is-done'); s.classList.remove('is-next'); });
+      say('código aceito!', 'ok');
+      doneTimer = setTimeout(() => { doneTimer = 0; closePad(); openSecretOverlay(); }, 550);
+    } else {
+      openSecretOverlay();
+    }
+  }
+
+  // one input, from a key or a tap. `name` is an event.key: ArrowUp..., or b / a
+  function feed(name) {
+    if (closeSecretOverlay || doneTimer) return; // already found it
+    if (name === SEQ[pos]) {
+      pos++;
+      if (pos === SEQ.length) complete(); else paint();
+      return;
+    }
+    const lostProgress = pos > 0;
+    pos = name === SEQ[0] ? 1 : 0; // a fresh ↑ can still be the start of a new attempt
+    paint(lostProgress ? 'wrong' : (padOpen() && pos === 0 ? 'miss' : ''));
+    if (lostProgress && navigator.vibrate) navigator.vibrate(25);
+  }
 
   window.addEventListener('keydown', (e) => {
-    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (key === seq[pos]) {
-      pos++;
-      if (pos === seq.length) {
-        overlay.classList.add('open');
-        unlockAchievement('konami');
-        pos = 0;
-      }
-    } else {
-      pos = (key === seq[0]) ? 1 : 0;
+    if (MODIFIERS.has(e.key)) return; // Shift for a capital B must not count as a wrong key
+    const name = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (padOpen()) {
+      // in the controller only the code's own keys count — Enter/Space/Tab work its buttons, not the sequence
+      if (!NAMES[name]) return;
+      if (TURN[name] !== undefined) e.preventDefault();
     }
+    feed(name);
   });
 
-  closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+  function buildPad() {
+    padEl = document.createElement('div');
+    padEl.className = 'konami-pad';
+    padEl.setAttribute('role', 'dialog');
+    padEl.setAttribute('aria-modal', 'true');
+    padEl.setAttribute('aria-label', 'Controle do código Konami');
+    const dirKey = (name, cls) => `<button type="button" class="konami-pad__key konami-pad__key--${cls}" data-key="${name}" aria-label="${NAMES[name]}">${arrowIcon(name)}</button>`;
+    padEl.innerHTML = `
+      <div class="terminal-window konami-pad__window" tabindex="-1">
+        <div class="terminal-window__bar">
+          <span class="dot dot--red" aria-hidden="true"></span><span class="dot dot--yellow" aria-hidden="true"></span><span class="dot dot--green" aria-hidden="true"></span>
+          <span class="terminal-window__title">controle.js</span>
+          <button type="button" class="overlay-close" aria-label="fechar (Esc)"><span class="ui-icon ui-icon--close" aria-hidden="true"></span>fechar</button>
+        </div>
+        <div class="konami-pad__body">
+          <p class="konami-pad__title">código secreto</p>
+          <div class="konami-pad__seq"></div>
+          <p class="konami-pad__status" role="status" aria-live="polite"></p>
+          <div class="konami-pad__controls">
+            <div class="konami-pad__dpad">
+              ${dirKey('ArrowUp', 'up')}${dirKey('ArrowLeft', 'left')}<span class="konami-pad__hub" aria-hidden="true"></span>${dirKey('ArrowRight', 'right')}${dirKey('ArrowDown', 'down')}
+            </div>
+            <div class="konami-pad__actions">
+              <button type="button" class="konami-pad__key konami-pad__key--b" data-key="b" aria-label="B">B</button>
+              <button type="button" class="konami-pad__key konami-pad__key--a" data-key="a" aria-label="A">A</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(padEl);
+    seqEl = padEl.querySelector('.konami-pad__seq');
+    statusEl = padEl.querySelector('.konami-pad__status');
+    seqEl.innerHTML = SEQ.map((name) => `<span class="konami-pad__slot">${TURN[name] !== undefined ? arrowIcon(name) : name.toUpperCase()}</span>`).join('');
+    slotEls = [...seqEl.children];
+
+    // pointerdown, not click: a tap lands the moment the thumb does. A key worked from the keyboard
+    // (Enter/Space) still arrives as a click, with detail 0.
+    padEl.querySelectorAll('.konami-pad__key').forEach((btn) => {
+      const press = () => {
+        playClick();
+        if (navigator.vibrate) navigator.vibrate(8);
+        feed(btn.dataset.key);
+      };
+      const release = () => btn.classList.remove('is-pressed');
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault();
+        btn.classList.add('is-pressed');
+        press();
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => btn.addEventListener(ev, release));
+      btn.addEventListener('click', (e) => { if (e.detail === 0) press(); });
+    });
+    padEl.querySelector('.overlay-close').addEventListener('click', closePad);
+    padEl.querySelector('.dot--red').addEventListener('click', closePad);
+    padEl.addEventListener('click', (e) => { if (e.target === padEl) closePad(); });
+  }
+
+  function openPad() {
+    if (padOpen()) return;
+    if (!padEl) buildPad();
+    pos = 0;
+    paint();
+    backTo = document.activeElement;
+    padEl.classList.add('open');
+    lockScroll();
+    closeKonamiPad = closePad;
+    padEl.querySelector('.konami-pad__window').focus({ preventScroll: true });
+  }
+
+  function closePad() {
+    if (!padOpen()) return;
+    clearTimeout(doneTimer);
+    doneTimer = 0;
+    pos = 0;
+    padEl.classList.remove('open');
+    unlockScroll();
+    closeKonamiPad = null;
+    if (backTo && document.contains(backTo) && !backTo.hidden) backTo.focus?.({ preventScroll: true });
+    backTo = null;
+  }
+
+  openKonamiPad = openPad;
+  document.querySelector('.konami-hint')?.addEventListener('click', openPad);
 })();
 
 /* ---------- logo click easter egg (click 5x fast) ---------- */
@@ -2614,7 +2778,7 @@ document.addEventListener('keydown', (e) => {
     clearTimeout(timer);
     timer = setTimeout(() => { clicks = 0; }, 800);
     if (clicks >= 5) {
-      document.getElementById('secretOverlay').classList.add('open');
+      openSecretOverlay();
       unlockAchievement('logo5x');
       clicks = 0;
     } else {
