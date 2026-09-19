@@ -2073,50 +2073,57 @@ document.addEventListener('keydown', (e) => {
   const resetBtn = document.getElementById('mazeReset');
   const hintBtn = document.getElementById('mazeHint');
   const newBtn = document.getElementById('mazeNew');
+  const sizeBtns = [...document.querySelectorAll('.maze__size')];
 
   const NS = 'http://www.w3.org/2000/svg';
   const S = 100;   // one square, in viewBox units
   const PASS = 3;  // words solved (in total) that unlock the achievement
 
-  // Words about the world this portfolio lives in, grouped by length. The grid is always bigger than the
-  // word: the squares that carry no letter are blank, but the trail still has to cross every one of them.
-  // The letters met along the way, in order, spell the word. Two words solved moves the game up a group.
-  const TIERS = [
-    { shapes: [[3, 3], [2, 4]], words: [
-      ['DEPLOY', 'colocar a aplicação no ar, para todo mundo usar'],
-      ['PYTHON', 'linguagem de programação com nome de cobra'],
-      ['DOCKER', 'a baleia que empacota aplicações em containers'],
-      ['GITHUB', 'onde o código do Artur mora'],
-      ['SCRIPT', 'roteiro de comandos que o computador executa sozinho'],
-    ] },
-    { shapes: [[3, 3], [3, 4]], words: [
-      ['PIPELINE', 'a esteira do CI/CD: build, testes e entrega, tudo automático'],
-      ['TERMINAL', 'a janela preta onde se digitam comandos'],
-      ['SERVIDOR', 'o computador que responde aos pedidos da internet'],
-      ['VARIAVEL', 'guarda um valor debaixo de um nome'],
-      ['RECURSAO', 'quando uma função chama a si mesma'],
-      ['COMPILAR', 'transformar o código-fonte em programa executável'],
-    ] },
-    { shapes: [[3, 4], [4, 4], [3, 5]], words: [
-      ['FRAMEWORK', 'estrutura pronta que acelera a construção de apps, como React ou .NET'],
-      ['ALGORITMO', 'passo a passo para resolver um problema'],
-      ['PORTFOLIO', 'a vitrine de um desenvolvedor — como este site'],
-      ['CONTAINER', 'caixa isolada que leva a aplicação e tudo de que ela precisa'],
-      ['INTERFACE', 'a parte do sistema que a pessoa vê e toca'],
-      ['NAVEGADOR', 'o programa que abre este site: Chrome, Firefox, Edge...'],
-    ] },
-    { shapes: [[3, 4], [4, 4], [3, 5]], words: [
-      ['INTEGRACAO', 'o "I" do CI/CD: juntar o código de todo mundo o tempo todo'],
-      ['COMPUTACAO', 'a ciência que estuda algoritmos, dados e máquinas'],
-      ['ENGENHARIA', 'profissão de quem projeta e constrói, como a de software'],
-    ] },
-    { shapes: [[4, 4], [3, 5]], words: [
-      ['AUTENTICACAO', 'provar quem você é para entrar no sistema'],
-      ['DOCUMENTACAO', 'o texto que explica como usar o código (e que ninguém quer escrever)'],
-      ['ORQUESTRACAO', 'o que o Kubernetes faz: coordenar vários containers'],
-      ['CONFIGURACAO', 'os ajustes que dizem ao sistema como se comportar'],
-    ] },
+  // Words about the world this portfolio lives in. The grid is always bigger than the word: the squares
+  // that carry no letter are blank, but the trail still has to cross every one of them, and the letters
+  // met along the way, in order, spell the word.
+  const WORDS = [
+    ['DEPLOY', 'colocar a aplicação no ar, para todo mundo usar'],
+    ['PYTHON', 'linguagem de programação com nome de cobra'],
+    ['DOCKER', 'a baleia que empacota aplicações em containers'],
+    ['GITHUB', 'onde o código do Artur mora'],
+    ['SCRIPT', 'roteiro de comandos que o computador executa sozinho'],
+    ['PIPELINE', 'a esteira do CI/CD: build, testes e entrega, tudo automático'],
+    ['TERMINAL', 'a janela preta onde se digitam comandos'],
+    ['SERVIDOR', 'o computador que responde aos pedidos da internet'],
+    ['VARIAVEL', 'guarda um valor debaixo de um nome'],
+    ['RECURSAO', 'quando uma função chama a si mesma'],
+    ['COMPILAR', 'transformar o código-fonte em programa executável'],
+    ['FRAMEWORK', 'estrutura pronta que acelera a construção de apps, como React ou .NET'],
+    ['ALGORITMO', 'passo a passo para resolver um problema'],
+    ['PORTFOLIO', 'a vitrine de um desenvolvedor — como este site'],
+    ['CONTAINER', 'caixa isolada que leva a aplicação e tudo de que ela precisa'],
+    ['INTERFACE', 'a parte do sistema que a pessoa vê e toca'],
+    ['NAVEGADOR', 'o programa que abre este site: Chrome, Firefox, Edge...'],
+    ['INTEGRACAO', 'o "I" do CI/CD: juntar o código de todo mundo o tempo todo'],
+    ['COMPUTACAO', 'a ciência que estuda algoritmos, dados e máquinas'],
+    ['ENGENHARIA', 'profissão de quem projeta e constrói, como a de software'],
+    ['ARQUITETURA', 'o desenho de como as partes de um sistema se encaixam'],
+    ['PROGRAMACAO', 'a arte de dar ordens ao computador — o que o Artur faz'],
+    ['REPOSITORIO', 'o lugar onde o código e todo o seu histórico ficam guardados'],
+    ['AUTENTICACAO', 'provar quem você é para entrar no sistema'],
+    ['DOCUMENTACAO', 'o texto que explica como usar o código (e que ninguém quer escrever)'],
+    ['ORQUESTRACAO', 'o que o Kubernetes faz: coordenar vários containers'],
+    ['CONFIGURACAO', 'os ajustes que dizem ao sistema como se comportar'],
+    ['DESENVOLVEDOR', 'quem escreve e mantém o software — e assina este site'],
+    ['MICROSSERVICO', 'uma parte pequena e independente de um sistema maior'],
+    ['MONITORAMENTO', 'acompanhar a saúde do sistema em tempo real'],
+    ['ESCALABILIDADE', 'capacidade de crescer para atender mais gente sem quebrar'],
+    ['DESENVOLVIMENTO', 'o ciclo de criar software, da ideia ao código'],
   ];
+  // The board is a square of n x n. Each size takes words of a fitting length and fills in a different
+  // share of the spare wall room: more walls leave fewer choices, so 4x4 is gentler and 6x6 is bare.
+  const SIZES = {
+    4: { minLen: 6, maxLen: 12, extraWalls: 0.5 },
+    5: { minLen: 8, maxLen: 15, extraWalls: 0.25 },
+    6: { minLen: 10, maxLen: 15, extraWalls: 0 },
+  };
+  const DEFAULT_SIZE = 5;
 
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -2146,64 +2153,84 @@ document.addEventListener('keydown', (e) => {
     return out;
   }
 
-  // a route that visits every square once (null if this start has none, or it takes too long)
+  function turnRound(arr, i, j) {
+    for (; i < j; i++, j--) [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+
+  // A random route through every square. It starts as a serpentine (left to right, then right to left...)
+  // and is then "backbitten": an end of the route hops onto a neighbouring square and the stretch it
+  // skipped is turned round. That always leaves a valid route, and a few hundred hops make it look
+  // nothing like the serpentine — and, unlike digging for one, it doesn't get stuck on a big grid.
   function randomRoute(rows, cols) {
     const n = rows * cols;
-    const route = [Math.floor(Math.random() * n)];
-    const seen = new Array(n).fill(false);
-    seen[route[0]] = true;
-    let budget = 20000; // some starting squares have no full route at all; don't dig forever
-    (function extend() {
-      if (route.length === n) return true;
-      if (--budget < 0) return false;
-      for (const next of shuffle(neighboursOf(route[route.length - 1], rows, cols).filter((c) => !seen[c]))) {
-        seen[next] = true;
-        route.push(next);
-        if (extend()) return true;
-        route.pop();
-        seen[next] = false;
-      }
-      return false;
-    })();
-    return route.length === n ? route : null;
+    const route = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) route.push(r * cols + (r % 2 ? cols - 1 - c : c));
+    for (let hop = 0; hop < n * 25; hop++) {
+      const atEnd = Math.random() < 0.5;
+      const around = neighboursOf(atEnd ? route[n - 1] : route[0], rows, cols);
+      const k = route.indexOf(around[Math.floor(Math.random() * around.length)]);
+      if (atEnd && k < n - 2) turnRound(route, k + 1, n - 1);
+      else if (!atEnd && k > 1) turnRound(route, 0, k - 1);
+    }
+    return Math.random() < 0.5 ? route.reverse() : route;
   }
 
   // how many ways are there to visit every square from `start`, counting no further than `limit`
   function countRoutes(start, rows, cols, walls, limit) {
     const n = rows * cols;
-    const seen = new Array(n).fill(false);
-    seen[start] = true;
+    const around = Array.from({ length: n }, (_, i) => neighboursOf(i, rows, cols));
+    const blocked = new Uint8Array(n * n);
+    walls.forEach((k) => { const [a, b] = k.split('-').map(Number); blocked[a * n + b] = blocked[b * n + a] = 1; });
+    const seen = new Uint8Array(n);
+    const mark = new Int32Array(n);
+    let stamp = 0;
     let count = 0;
-    // A square still to visit that has no way in is a dead route; one with a single way in has to be
-    // where the route ends, and there is only one end — so two of those cannot both be reached.
-    function viable(head) {
+
+    // Is a full route still possible after stepping onto `head`? Every square left must be reachable from
+    // it, none may be cut off, and at most one may have a single way in (that one has to be the end).
+    function viable(head, left) {
       let deadEnds = 0;
       for (let i = 0; i < n; i++) {
         if (seen[i]) continue;
         let ways = 0;
-        for (const nx of neighboursOf(i, rows, cols)) if ((!seen[nx] || nx === head) && !walls.has(key(i, nx))) ways++;
+        for (const nx of around[i]) if ((!seen[nx] || nx === head) && !blocked[i * n + nx]) ways++;
         if (ways === 0) return false;
         if (ways === 1 && ++deadEnds > 1) return false;
       }
-      return true;
+      const stack = [head];
+      let reached = 0;
+      stamp++;
+      mark[head] = stamp;
+      while (stack.length) {
+        const cur = stack.pop();
+        for (const nx of around[cur]) {
+          if (seen[nx] || mark[nx] === stamp || blocked[cur * n + nx]) continue;
+          mark[nx] = stamp;
+          reached++;
+          stack.push(nx);
+        }
+      }
+      return reached === left;
     }
+
+    seen[start] = 1;
     (function walk(cur, len) {
       if (count >= limit) return;
       if (len === n) { count++; return; }
-      for (const next of neighboursOf(cur, rows, cols)) {
-        if (seen[next] || walls.has(key(cur, next))) continue;
-        seen[next] = true;
-        if (viable(next)) walk(next, len + 1);
-        seen[next] = false;
+      for (const next of around[cur]) {
+        if (seen[next] || blocked[cur * n + next]) continue;
+        seen[next] = 1;
+        if (viable(next, n - len - 1)) walk(next, len + 1);
+        seen[next] = 0;
       }
     })(start, 1);
     return count;
   }
 
-  function makePuzzle(word, clue, rows, cols) {
+  // extraShare: how much of the spare wall room is filled in — more walls leave fewer choices (easier)
+  function makePuzzle(word, clue, rows, cols, extraShare) {
     const n = rows * cols;
-    let route = null;
-    while (!route) route = randomRoute(rows, cols);
+    const route = randomRoute(rows, cols);
     const start = route[0];
 
     // which steps of the route carry a letter: the two ends, plus the rest of the word somewhere between
@@ -2222,12 +2249,14 @@ document.addEventListener('keydown', (e) => {
       walls.add(k);
       if (countRoutes(start, rows, cols, walls, 2) === 1) break;
     }
+    const began = performance.now();
     for (const k of shuffle([...walls])) {
+      if (performance.now() - began > 400) break; // good enough — a slow phone shouldn't wait on tidying up
       walls.delete(k);
       if (countRoutes(start, rows, cols, walls, 2) !== 1) walls.add(k);
     }
     const spare = shuffle(candidates.filter((k) => !walls.has(k)));
-    spare.slice(0, Math.ceil(spare.length * 0.5)).forEach((k) => walls.add(k));
+    spare.slice(0, Math.ceil(spare.length * extraShare)).forEach((k) => walls.add(k));
 
     return { word, clue, rows, cols, size: n, letters, walls, route, start, end: route[n - 1] };
   }
@@ -2235,11 +2264,12 @@ document.addEventListener('keydown', (e) => {
   /* ---- the game ---- */
   let puzzle, path, solved, hintsUsed;
   let cells = [], slotEls = [], trail, wallEls = new Map(), bumpedAt = new Map();
-  let solvedTotal = 0, sessionSolved = 0, lastWord = '';
+  let solvedTotal = 0, lastWord = '', boardSize = DEFAULT_SIZE;
   let bests = {};
   let startedAt = 0, timerId = 0, hintTimer = 0;
   try { solvedTotal = Number(localStorage.getItem('artur-maze-solved')) || 0; } catch (e) {}
-  try { bests = JSON.parse(localStorage.getItem('artur-maze-best') || '{}') || {}; } catch (e) {}
+  try { boardSize = SIZES[Number(localStorage.getItem('artur-maze-size'))] ? Number(localStorage.getItem('artur-maze-size')) : DEFAULT_SIZE; } catch (e) {}
+  try { bests = JSON.parse(localStorage.getItem('artur-maze-best-v2') || '{}') || {}; } catch (e) {}
   solvedEl.textContent = solvedTotal;
 
   function svgEl(name, attrs, parent) {
@@ -2336,17 +2366,18 @@ document.addEventListener('keydown', (e) => {
     timerId = 0;
   }
 
+  function paintSizes() {
+    sizeBtns.forEach((btn) => btn.setAttribute('aria-pressed', String(Number(btn.dataset.size) === boardSize)));
+  }
+
   function newPuzzle() {
     stopTimer();
     clearTimeout(hintTimer);
-    const tier = TIERS[Math.min(Math.floor(sessionSolved / 2), TIERS.length - 1)];
-    let entry;
-    do { entry = tier.words[Math.floor(Math.random() * tier.words.length)]; } while (entry[0] === lastWord && tier.words.length > 1);
-    lastWord = entry[0];
-    let [r, c] = tier.shapes[Math.floor(Math.random() * tier.shapes.length)];
-    if (Math.random() < 0.5) [r, c] = [c, r];                                   // half the time lay it on its side...
-    if (window.matchMedia?.('(max-width: 480px)').matches && c > r) [r, c] = [c, r]; // ...except on a phone, where tall fits better
-    puzzle = makePuzzle(entry[0], entry[1], r, c);
+    const { minLen, maxLen, extraWalls } = SIZES[boardSize];
+    const fitting = WORDS.filter(([w]) => w.length >= minLen && w.length <= maxLen && w !== lastWord);
+    const [word, clue] = fitting[Math.floor(Math.random() * fitting.length)];
+    lastWord = word;
+    puzzle = makePuzzle(word, clue, boardSize, boardSize, extraWalls);
     path = [puzzle.start];
     solved = false;
     hintsUsed = 0;
@@ -2357,6 +2388,7 @@ document.addEventListener('keydown', (e) => {
     say('');
     build();
     paint();
+    paintSizes();
   }
 
   function win() {
@@ -2366,7 +2398,6 @@ document.addEventListener('keydown', (e) => {
     path.forEach((c, i) => cells[c].style.setProperty('--i', i)); // the light runs along the trail, in order
     board.classList.add('is-solved');
     solvedTotal++;
-    sessionSolved++;
     solvedEl.textContent = solvedTotal;
     try { localStorage.setItem('artur-maze-solved', String(solvedTotal)); } catch (e) {}
 
@@ -2374,7 +2405,7 @@ document.addEventListener('keydown', (e) => {
     if (!hintsUsed && (!bests[puzzle.size] || secs < bests[puzzle.size])) { // only a clean run sets a record
       bests[puzzle.size] = Math.round(secs * 10) / 10;
       bestEl.textContent = fmtTime(bests[puzzle.size]);
-      try { localStorage.setItem('artur-maze-best', JSON.stringify(bests)); } catch (e) {}
+      try { localStorage.setItem('artur-maze-best-v2', JSON.stringify(bests)); } catch (e) {}
       note += ' · novo recorde!';
     }
     playEat();
@@ -2508,6 +2539,16 @@ document.addEventListener('keydown', (e) => {
   });
 
   newBtn.addEventListener('click', () => { playClick(); newPuzzle(); });
+
+  // the board size is the player's to pick; it is remembered, and a new word is drawn at once
+  sizeBtns.forEach((btn) => btn.addEventListener('click', () => {
+    const size = Number(btn.dataset.size);
+    if (size === boardSize) return;
+    boardSize = size;
+    try { localStorage.setItem('artur-maze-size', String(size)); } catch (e) {}
+    playClick();
+    newPuzzle();
+  }));
 
   newPuzzle();
 })();

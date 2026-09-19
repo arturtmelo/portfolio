@@ -419,6 +419,12 @@
             <span>tempo: <b id="mazeTime" class="tabular">0:00</b></span>
             <span>melhor: <b id="mazeBest" class="tabular">--</b></span>
           </div>
+          <div class="maze__sizes" role="group" aria-label="tamanho do tabuleiro">
+            <span>tamanho:</span>
+            <button type="button" class="maze__size" data-size="4" aria-pressed="false">4×4</button>
+            <button type="button" class="maze__size" data-size="5" aria-pressed="true">5×5</button>
+            <button type="button" class="maze__size" data-size="6" aria-pressed="false">6×6</button>
+          </div>
           <p class="maze__clue" id="mazeClue"></p>
           <div class="maze__slots" id="mazeSlots" aria-hidden="true"></div>
           <svg id="mazeBoard" class="maze__board" role="group" tabindex="0" aria-label="labirinto de letras: arraste, ou use as setas do teclado, passando por todas as casas até a última letra" xmlns="http://www.w3.org/2000/svg"></svg>

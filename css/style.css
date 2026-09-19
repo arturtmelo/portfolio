@@ -1751,6 +1751,20 @@ kbd {
   color: var(--muted);
 }
 .maze__top b { color: var(--green); }
+.maze__sizes { display: flex; align-items: center; justify-content: center; gap: .5rem; font-size: .8rem; color: var(--muted); }
+.maze__size {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .35rem .75rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+}
+.maze__size:hover { border-color: var(--green); color: var(--text); }
+.maze__size[aria-pressed="true"] { border-color: var(--green); color: var(--green); background: rgba(var(--green-rgb), .1); }
 .maze__clue { width: 100%; max-width: 460px; margin: 0; font-size: .85rem; line-height: 1.6; text-align: center; color: var(--text); }
 .maze__clue span { color: var(--cyan); }
 
@@ -1777,7 +1791,7 @@ kbd {
 .maze__board {
   display: block;
   width: 100%;
-  max-width: calc(var(--cols, 3) * 88px);
+  max-width: calc(var(--cols, 5) * 78px);
   height: auto;
   cursor: pointer;
   touch-action: none; /* dragging over the board is the game, not a scroll */
@@ -1789,7 +1803,9 @@ kbd {
 @media (max-width: 480px) {
   .maze { padding: 1rem .9rem 1.2rem; }
   .maze__top { font-size: .78rem; gap: .4rem .8rem; justify-content: center; }
-  .maze__board { max-width: calc(var(--cols, 3) * 84px); }
+  .maze__board { max-width: calc(var(--cols, 5) * 84px); }
+  .maze__slots { gap: 3px; }
+  .maze__slot { height: 28px; border-radius: 5px; font-size: .7rem; }
 }
 
 .maze__cell {
