@@ -481,7 +481,7 @@
         <div class="game-switcher__tabs">
           <button type="button" class="game-switcher__tab" data-game="snake" aria-label="Snake"><span class="game-switcher__icon game-switcher__icon--snake" aria-hidden="true"></span></button>
           <button type="button" class="game-switcher__tab" data-game="typing" aria-label="Corrida de digitação"><span class="game-switcher__icon game-switcher__icon--keyboard" aria-hidden="true"></span></button>
-          <button type="button" class="game-switcher__tab" data-game="memory" aria-label="Jogo da memória"><span class="game-switcher__icon game-switcher__icon--cards" aria-hidden="true"></span></button>
+          <button type="button" class="game-switcher__tab" data-game="bug" aria-label="Caça-bug: ache a linha com o bug"><span class="game-switcher__icon game-switcher__icon--bug" aria-hidden="true"></span></button>
         </div>
       </div>
 
@@ -533,15 +533,21 @@
         </div>
       </div>
 
-      <div class="game-page" data-game-page="memory" hidden>
-        <div class="mem">
-          <p class="mem__hint">jogo da memória — encontre os pares de ícones no menor número de jogadas.</p>
-          <div class="mem__board" id="memBoard"></div>
-          <div class="mem__stats">
-            <span>jogadas: <b id="memMoves" class="tabular">0</b></span>
-            <span>recorde: <b id="memBest" class="tabular">--</b></span>
+      <div class="game-page" data-game-page="bug" hidden>
+        <div class="bug">
+          <div class="bug__top">
+            <span>rodada: <b id="bugRound" class="tabular">1/6</b></span>
+            <span>acertos: <b id="bugScore" class="tabular">0</b></span>
+            <span>recorde: <b id="bugBest" class="tabular">--</b></span>
           </div>
-          <button type="button" id="memReset" class="btn btn--ghost">embaralhar</button>
+          <p class="bug__goal" id="bugGoal"></p>
+          <div class="bug__code-wrap">
+            <span class="bug__lang" id="bugLang"></span>
+            <div class="bug__code" id="bugCode" role="group" aria-label="trecho de código — escolha a linha que tem o bug"></div>
+          </div>
+          <div class="bug__feedback" id="bugFeedback" aria-live="polite" hidden></div>
+          <button type="button" id="bugNext" class="btn btn--ghost" hidden>próxima</button>
+          <p class="bug__hint" id="bugHint">uma das linhas tem um bug — escolha qual.</p>
         </div>
       </div>
     </div>

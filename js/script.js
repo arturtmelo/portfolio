@@ -157,7 +157,7 @@ const ACHIEVEMENTS = {
   arcade: { label: 'Modo Arcade', desc: 'Comeu a primeira maçã no Snake, lá no playground.' },
   hacker: { label: 'Script Kiddie', desc: 'Tentou invadir o mainframe com o comando hack.' },
   speedtyper: { label: 'Dedos de Fibra Óptica', desc: 'Bateu 60+ WPM na corrida de digitação.' },
-  memory: { label: 'Memória de Elefante', desc: 'Completou o jogo da memória no playground.' },
+  bughunt: { label: 'Caça-Bugs', desc: 'Achou 5 dos 6 bugs no Caça-Bug, lá no playground.' },
 };
 
 // UI icons are masked SVGs filled with the site palette (see .ui-icon in the CSS)
@@ -165,6 +165,8 @@ const uiIcon = (name) => `<span class="ui-icon ui-icon--${name}" aria-hidden="tr
 
 let unlocked = new Set();
 try { unlocked = new Set(JSON.parse(localStorage.getItem('artur-achievements') || '[]')); } catch (e) {}
+// drop ids of achievements that no longer exist (a retired game, say) so the counter stays honest
+unlocked = new Set([...unlocked].filter((id) => ACHIEVEMENTS[id]));
 
 let trophyBtn = null;
 function updateTrophyBadge() {
@@ -2057,28 +2059,231 @@ document.addEventListener('keydown', (e) => {
   render();
 })();
 
-/* ---------- playground: memory match ---------- */
-(function memoryGame() {
-  const boardEl = document.getElementById('memBoard');
-  const movesEl = document.getElementById('memMoves');
-  const bestEl = document.getElementById('memBest');
-  const resetBtn = document.getElementById('memReset');
-  if (!boardEl) return;
+/* ---------- playground: bug hunt — spot the buggy line ---------- */
+(function bugHunt() {
+  const codeEl = document.getElementById('bugCode');
+  if (!codeEl) return;
+  const langEl = document.getElementById('bugLang');
+  const goalEl = document.getElementById('bugGoal');
+  const roundEl = document.getElementById('bugRound');
+  const scoreEl = document.getElementById('bugScore');
+  const bestEl = document.getElementById('bugBest');
+  const feedbackEl = document.getElementById('bugFeedback');
+  const nextBtn = document.getElementById('bugNext');
+  const hintEl = document.getElementById('bugHint');
+  const wrapEl = codeEl.closest('.bug__code-wrap');
 
-  const SYMBOLS = [
-    { key: 'zap', label: 'raio' },
-    { key: 'terminal', label: 'terminal' },
-    { key: 'code', label: 'código' },
-    { key: 'lock', label: 'cadeado' },
-    { key: 'git', label: 'git' },
-    { key: 'signal', label: 'sinal' },
-    { key: 'cpu', label: 'chip' },
-    { key: 'db', label: 'banco de dados' },
+  const ROUNDS = 6;
+  const PASS = 5; // this many right unlocks the achievement
+
+  // Real mistakes from the stack this portfolio is about (C#/.NET, JS/React, SQL, Python, Java, CI).
+  // bug: the 1-based line(s) that hold it — any of them counts. why: shown after the answer; `x` becomes <code>.
+  const PUZZLES = [
+    {
+      lang: 'C#', goal: 'devolver a média das notas, com casas decimais.',
+      code: [
+        'double Media(int[] notas)',
+        '{',
+        '    int soma = 0;',
+        '    foreach (var n in notas)',
+        '        soma += n;',
+        '    return soma / notas.Length;',
+        '}',
+      ],
+      bug: [6],
+      why: 'int dividido por int é divisão inteira: 7 / 2 dá 3, não 3,5. Converta um dos lados: `(double)soma / notas.Length`.',
+    },
+    {
+      lang: 'C#', goal: 'remover do carrinho os itens com quantidade zero.',
+      code: [
+        'void Limpar(List<Item> carrinho)',
+        '{',
+        '    foreach (var item in carrinho)',
+        '    {',
+        '        if (item.Quantidade == 0)',
+        '            carrinho.Remove(item);',
+        '    }',
+        '}',
+      ],
+      bug: [6],
+      why: 'Alterar a lista enquanto o `foreach` a percorre lança InvalidOperationException. Use `carrinho.RemoveAll(i => i.Quantidade == 0)`.',
+    },
+    {
+      lang: 'C#', goal: 'buscar o usuário pelo nome digitado no formulário.',
+      code: [
+        'public Usuario Buscar(string nome)',
+        '{',
+        '    var sql = "SELECT * FROM Usuarios "',
+        `      + "WHERE Nome = '" + nome + "'";`,
+        '    return _db.Query<Usuario>(sql);',
+        '}',
+      ],
+      bug: [4],
+      why: 'Concatenar o que o usuário digitou dentro do SQL abre a porta para SQL injection. Use parâmetro: `WHERE Nome = @nome`.',
+    },
+    {
+      lang: 'JavaScript', goal: 'devolver os 3 últimos itens da lista.',
+      code: [
+        'function ultimos3(lista) {',
+        '  if (lista.length <= 3) return lista;',
+        '  const inicio = lista.length - 3;',
+        '  return lista.slice(inicio + 1);',
+        '}',
+      ],
+      bug: [4],
+      why: '`slice(inicio + 1)` pula um item a mais e devolve só 2. O certo é `lista.slice(inicio)` — ou simplesmente `lista.slice(-3)`.',
+    },
+    {
+      lang: 'JavaScript', goal: 'salvar todos os itens e só então avisar que terminou.',
+      code: [
+        'async function salvarTodos(itens) {',
+        '  itens.forEach(async (item) => {',
+        '    await api.salvar(item);',
+        '  });',
+        "  console.log('tudo salvo!');",
+        '}',
+      ],
+      bug: [2, 3],
+      why: 'O `forEach` ignora a Promise que o callback devolve: o log dispara antes de salvar qualquer coisa. Use `for...of` com `await`, ou `await Promise.all(itens.map(...))`.',
+    },
+    {
+      lang: 'JavaScript', goal: 'imprimir 0, 1 e 2.',
+      code: [
+        'for (var i = 0; i < 3; i++) {',
+        '  setTimeout(() => console.log(i));',
+        '}',
+      ],
+      bug: [1],
+      why: '`var` tem escopo de função: as três callbacks enxergam o mesmo `i`, que já vale 3 quando rodam — sai 3, 3, 3. Com `let i` cada volta ganha o seu.',
+    },
+    {
+      lang: 'JavaScript', goal: 'converter as strings em inteiros: [10, 10, 10].',
+      code: [
+        "const nums = ['10', '10', '10'];",
+        'const inteiros = nums.map(parseInt);',
+        'console.log(inteiros);',
+      ],
+      bug: [2],
+      why: 'O `map` passa (valor, índice, array) e o `parseInt` usa o índice como base numérica: o resultado é [10, NaN, 2]. Use `nums.map(Number)` ou `n => parseInt(n, 10)`.',
+    },
+    {
+      lang: 'React', goal: 'adicionar um item à lista guardada no estado — a tela deve atualizar.',
+      code: [
+        'function adicionar(item) {',
+        '  itens.push(item);',
+        '  setItens(itens);',
+        '}',
+      ],
+      bug: [2, 3],
+      why: '`push` muda o array original e o `setItens` recebe a mesma referência: para o React nada mudou e a tela não atualiza. Crie um novo array: `setItens([...itens, item])`.',
+    },
+    {
+      lang: 'SQL', goal: 'contar quantos pedidos cada cliente fez.',
+      code: [
+        'SELECT c.nome, COUNT(*) AS pedidos',
+        'FROM clientes c',
+        'JOIN pedidos p ON p.id = c.id',
+        'GROUP BY c.nome;',
+      ],
+      bug: [3],
+      why: 'O JOIN compara o id do pedido com o id do cliente. A chave estrangeira é outra: `p.cliente_id = c.id`.',
+    },
+    {
+      lang: 'SQL', goal: 'listar quem nunca fez login.',
+      code: [
+        'SELECT nome',
+        'FROM usuarios',
+        'WHERE ultimo_login = NULL',
+        'ORDER BY nome;',
+      ],
+      bug: [3],
+      why: 'Comparar com NULL usando `=` nunca dá verdadeiro (o resultado é UNKNOWN), então a consulta volta vazia. O certo é `IS NULL`.',
+    },
+    {
+      lang: 'Python', goal: 'cada chamada sem lista deve começar com uma lista nova e vazia.',
+      code: [
+        'def adicionar(item, lista=[]):',
+        '    lista.append(item)',
+        '    return lista',
+        '',
+        'adicionar(1)  # [1]',
+        'adicionar(2)  # deveria ser [2]',
+      ],
+      bug: [1],
+      why: 'O valor padrão `[]` é criado uma única vez e reaproveitado entre as chamadas — o segundo resultado sai [1, 2]. Use `lista=None` e crie a lista dentro da função.',
+    },
+    {
+      lang: 'Python', goal: 'devolver o item do meio da lista ordenada (tamanho ímpar).',
+      code: [
+        'def elemento_do_meio(itens):',
+        '    ordenados = sorted(itens)',
+        '    meio = len(ordenados) / 2',
+        '    return ordenados[meio]',
+      ],
+      bug: [3],
+      why: 'No Python 3, `/` devolve float (3 / 2 = 1.5) e índice de lista precisa ser inteiro: dá TypeError. Use `//`, a divisão inteira.',
+    },
+    {
+      lang: 'Java', goal: 'dizer se o perfil é "admin".',
+      code: [
+        'boolean ehAdmin(String perfil) {',
+        '    if (perfil == "admin") {',
+        '        return true;',
+        '    }',
+        '    return false;',
+        '}',
+      ],
+      bug: [2],
+      why: 'Em Java o `==` compara referências, não o texto: pode dar falso mesmo com o mesmo conteúdo. Use `"admin".equals(perfil)`.',
+    },
+    {
+      lang: 'YAML (CI)', goal: 'rodar os testes do projeto .NET no pipeline.',
+      code: [
+        'steps:',
+        '  - uses: actions/checkout@v4',
+        '  - name: Rodar testes',
+        '  run: dotnet test',
+      ],
+      bug: [4],
+      why: 'Em YAML a indentação é a estrutura: o `run` precisa ficar alinhado com o `name` (4 espaços) para pertencer ao mesmo passo. Assim o pipeline nem carrega.',
+    },
   ];
-  let cards, flipped, matchedCount, moves, locked;
+
+  const RATINGS = [
+    [6, 'revisão impecável: nenhum bug passou.'],
+    [5, 'quase perfeito — só um escapou.'],
+    [3, 'bom olho! o time de QA agradece.'],
+    [0, 'bug é traiçoeiro mesmo. quer tentar outra rodada?'],
+  ];
+
+  // a small highlighter: enough colour to read like an editor, not a real parser
+  const KEYWORDS = new Set((
+    'function const let var return if else for foreach while in of async await new void public private static class def ' +
+    'int double string bool boolean true false null None True False and or not is ' +
+    'SELECT FROM WHERE JOIN ON GROUP BY ORDER COUNT AS UPDATE SET INSERT INTO DELETE NULL IS'
+  ).split(' '));
+  const TOKEN = /(\/\/.*|--.*|#.*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\d+(?:\.\d+)?)|([A-Za-z_]\w*)/g;
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  function highlight(line) {
+    let out = '', last = 0, m;
+    TOKEN.lastIndex = 0;
+    while ((m = TOKEN.exec(line))) {
+      out += esc(line.slice(last, m.index));
+      const [tok, comment, str, num] = m;
+      if (comment) out += `<i class="tok-c">${esc(tok)}</i>`;
+      else if (str) out += `<i class="tok-s">${esc(tok)}</i>`;
+      else if (num) out += `<i class="tok-n">${esc(tok)}</i>`;
+      else out += KEYWORDS.has(tok) ? `<i class="tok-k">${esc(tok)}</i>` : esc(tok);
+      last = m.index + tok.length;
+    }
+    return out + esc(line.slice(last));
+  }
+
+  let queue, index, score, mode; // mode: 'asking' | 'answered' | 'done'
+  let rows = [];
   let best = 0;
-  try { best = Number(localStorage.getItem('artur-memory-best-4x4')) || 0; } catch (e) {}
-  if (bestEl) bestEl.textContent = best || '--';
+  try { best = Number(localStorage.getItem('artur-bughunt-best')) || 0; } catch (e) {}
+  if (bestEl) bestEl.textContent = best ? `${best}/${ROUNDS}` : '--';
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -2089,77 +2294,102 @@ document.addEventListener('keydown', (e) => {
   }
 
   function newGame() {
-    cards = shuffle([...SYMBOLS, ...SYMBOLS]).map(sym => ({ sym, matched: false }));
-    flipped = [];
-    matchedCount = 0;
-    moves = 0;
-    locked = false;
-    if (movesEl) movesEl.textContent = '0';
-    render();
+    queue = shuffle([...PUZZLES]).slice(0, ROUNDS);
+    index = 0;
+    score = 0;
+    wrapEl.hidden = false;
+    goalEl.hidden = false;
+    hintEl.hidden = false;
+    showRound();
   }
 
-  function render() {
-    boardEl.innerHTML = '';
-    cards.forEach((card, i) => {
-      const revealed = card.matched || flipped.includes(i);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'mem__card'
-        + (card.matched ? ' mem__card--matched' : '')
-        + (flipped.includes(i) ? ' mem__card--flipped' : '');
-      btn.disabled = card.matched || locked;
-      btn.setAttribute('aria-label', revealed ? `carta ${i + 1}: ${card.sym.label}` : `carta ${i + 1}`);
-      if (revealed) {
-        const icon = document.createElement('span');
-        icon.className = `mem__icon mem__icon--${card.sym.key}`;
-        icon.setAttribute('aria-hidden', 'true');
-        btn.appendChild(icon);
+  function showRound() {
+    const p = queue[index];
+    mode = 'asking';
+    roundEl.textContent = `${index + 1}/${ROUNDS}`;
+    scoreEl.textContent = score;
+    goalEl.innerHTML = `<span>objetivo:</span> ${esc(p.goal)}`;
+    langEl.textContent = p.lang;
+    codeEl.innerHTML = '';
+    rows = [];
+    p.code.forEach((text, i) => {
+      const n = i + 1;
+      if (!text.trim()) { // a blank line keeps its number but isn't something to pick
+        const gap = document.createElement('div');
+        gap.className = 'bug__line bug__line--blank';
+        gap.innerHTML = `<span class="bug__num" aria-hidden="true">${n}</span>`;
+        codeEl.appendChild(gap);
+        return;
       }
-      btn.addEventListener('click', () => flipCard(i));
-      boardEl.appendChild(btn);
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'bug__line';
+      row.innerHTML = `<span class="bug__num" aria-hidden="true">${n}</span><span class="bug__src">${highlight(text)}</span>`;
+      row.setAttribute('aria-label', `linha ${n}: ${text.trim()}`);
+      row.addEventListener('click', () => answer(n));
+      rows[n] = row;
+      codeEl.appendChild(row);
     });
+    feedbackEl.hidden = true;
+    nextBtn.hidden = true;
+    hintEl.hidden = false;
   }
 
-  function flipCard(i) {
-    if (locked || flipped.includes(i) || cards[i].matched) return;
-    flipped.push(i);
+  function answer(n) {
+    if (mode !== 'asking') return;
+    mode = 'answered';
+    hintEl.hidden = true; // the question has been answered — the prompt below would only be noise
+    const p = queue[index];
+    const hit = p.bug.includes(n);
+    if (hit) { score++; playEat(); } else playClick();
+    scoreEl.textContent = score;
+
+    rows.forEach((row) => { if (row) row.disabled = true; });
+    p.bug.forEach((b) => rows[b]?.classList.add('is-bug'));
+    if (!hit) rows[n]?.classList.add('is-wrong');
+
+    const where = p.bug.length > 1 ? `nas linhas ${p.bug.join(' e ')}` : `na linha ${p.bug[0]}`;
+    const why = esc(p.why).replace(/`([^`]+)`/g, '<code>$1</code>');
+    feedbackEl.className = `bug__feedback bug__feedback--${hit ? 'ok' : 'miss'}`;
+    feedbackEl.innerHTML = `<p class="bug__verdict">${hit ? 'achou o bug!' : `não foi essa — o bug está ${where}.`}</p><p>${why}</p>`;
+    feedbackEl.hidden = false;
+    nextBtn.textContent = index === ROUNDS - 1 ? 'ver resultado' : 'próxima';
+    nextBtn.hidden = false;
+    nextBtn.focus({ preventScroll: true });
+    nextBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function showResult() {
+    mode = 'done';
+    wrapEl.hidden = true;
+    goalEl.hidden = true;
+    hintEl.hidden = true;
+    roundEl.textContent = 'fim';
+    const rating = RATINGS.find(([min]) => score >= min)[1];
+    let record = '';
+    if (score > best) {
+      best = score;
+      bestEl.textContent = `${best}/${ROUNDS}`;
+      try { localStorage.setItem('artur-bughunt-best', String(best)); } catch (e) {}
+      record = '<p class="bug__verdict">novo recorde!</p>';
+    }
+    feedbackEl.className = 'bug__feedback bug__result';
+    feedbackEl.innerHTML = `<p class="bug__result-score">${score}<span>/${ROUNDS}</span></p><p>${rating}</p>${record}`;
+    feedbackEl.hidden = false;
+    nextBtn.textContent = 'jogar de novo';
+    nextBtn.hidden = false;
+    nextBtn.focus({ preventScroll: true });
+    if (score >= PASS) unlockAchievement('bughunt');
+  }
+
+  nextBtn.addEventListener('click', () => {
     playClick();
-    render();
-    if (flipped.length < 2) return;
+    if (mode === 'done') { newGame(); return; }
+    if (mode !== 'answered') return;
+    index++;
+    if (index < ROUNDS) showRound(); else showResult();
+  });
 
-    moves++;
-    if (movesEl) movesEl.textContent = moves;
-    locked = true;
-    const [a, b] = flipped;
-
-    if (cards[a].sym === cards[b].sym) {
-      cards[a].matched = true;
-      cards[b].matched = true;
-      flipped = [];
-      locked = false;
-      matchedCount++;
-      playEat();
-      render();
-      if (matchedCount === SYMBOLS.length) finishGame();
-    } else {
-      setTimeout(() => {
-        flipped = [];
-        locked = false;
-        render();
-      }, 700);
-    }
-  }
-
-  function finishGame() {
-    if (!best || moves < best) {
-      best = moves;
-      if (bestEl) bestEl.textContent = best;
-      try { localStorage.setItem('artur-memory-best-4x4', String(best)); } catch (e) {}
-    }
-    unlockAchievement('memory');
-  }
-
-  resetBtn?.addEventListener('click', newGame);
   newGame();
 })();
 
@@ -2171,8 +2401,8 @@ document.addEventListener('keydown', (e) => {
   const titleEl = document.getElementById('playgroundTitle');
   const pages = [...win.querySelectorAll('.game-page')];
   const tabs = [...win.querySelectorAll('.game-switcher__tab')];
-  const GAMES = ['snake', 'typing', 'memory'];
-  const TITLES = { snake: 'snake.js', typing: 'typing.js', memory: 'memoria.js' };
+  const GAMES = ['snake', 'typing', 'bug'];
+  const TITLES = { snake: 'snake.js', typing: 'typing.js', bug: 'cacabug.js' };
   let index = 0;
 
   function show(i) {
