@@ -1798,16 +1798,8 @@ kbd {
   stroke-width: 2;
   transition: fill .15s ease, stroke .15s ease;
 }
-/* a hole: a place where a square isn't, drawn as a dotted outline you can see is not for stepping on */
-.maze__void {
-  fill: none;
-  stroke: var(--muted);
-  stroke-width: 2;
-  stroke-dasharray: 1 9;
-  stroke-linecap: round;
-  opacity: .45;
-  pointer-events: none;
-}
+/* a blank square: nothing to read, but the trail still has to cross it */
+.maze__dot { fill: var(--muted); opacity: .55; pointer-events: none; }
 .maze__cell.is-on { fill: rgba(var(--green-rgb), .1); stroke: rgba(var(--green-rgb), .5); }
 .maze__cell.is-start { stroke: var(--green); stroke-width: 4; }
 .maze__cell.is-end { stroke: var(--cyan); stroke-width: 4; stroke-dasharray: 10 7; animation: mazeDash 1.6s linear infinite; }
@@ -1881,7 +1873,8 @@ kbd {
 .maze__key { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--green); border-radius: 3px; }
 .maze__key--end { border-color: var(--cyan); border-style: dashed; }
 .maze__key--wall { width: 3px; height: 14px; border: none; border-radius: 2px; background: var(--cyan); box-shadow: 0 0 4px rgba(var(--cyan-rgb), .7); }
-.maze__key--void { border: 2px dotted var(--muted); opacity: .6; }
+.maze__key--blank { position: relative; border-color: var(--border); }
+.maze__key--blank::after { content: ''; position: absolute; inset: 0; margin: auto; width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
 
 /* tab icon: a maze in line-art */
 .game-switcher__icon--maze { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9h6v6M9 3v3M15 9v6h6M15 21v-3M12 9h3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9h6v6M9 3v3M15 9v6h6M15 21v-3M12 9h3'/%3E%3C/svg%3E"); }
