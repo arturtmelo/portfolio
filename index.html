@@ -124,7 +124,7 @@
 
 <a href="#main" class="skip-link">pular para o conteúdo</a>
 
-<canvas id="matrix-canvas"></canvas>
+<canvas id="matrix-canvas" aria-hidden="true"></canvas>
 <div class="scanlines"></div>
 <div class="cursor-dot" id="cursorDot"></div>
 <div class="cursor-ring" id="cursorRing"></div>
@@ -146,13 +146,15 @@
   <span class="side-links__line" aria-hidden="true"></span>
 </nav>
 
-<!-- WHATSAPP -->
+<!-- FLOATING SHORTCUTS: WhatsApp + back to top -->
+<aside class="fab-dock" aria-label="atalhos">
 <a href="https://wa.me/5581991276452?text=Ol%C3%A1%2C%20Artur!%20Vi%20seu%20portf%C3%B3lio%20e%20gostaria%20de%20conversar." target="_blank" rel="noopener" class="whatsapp-btn" aria-label="Chamar no WhatsApp">
   <span class="whatsapp-btn__icon" aria-hidden="true"></span>
 </a>
 
 <!-- BACK TO TOP -->
 <button type="button" id="backToTop" class="back-to-top" aria-label="voltar ao topo">↑</button>
+</aside>
 
 <!-- BOOT SCREEN -->
 <div id="boot" class="boot">
@@ -163,7 +165,7 @@
 <!-- NAV -->
 <header class="nav" id="nav">
   <a href="#hero" class="nav__logo" id="logoClick" data-text="artur@dev:~$">artur@dev:~<span class="nav__logo-cursor">$</span></a>
-  <nav class="nav__links">
+  <nav class="nav__links" aria-label="menu principal">
     <a href="#about">sobre</a>
     <a href="#skills">stack</a>
     <a href="#projects">projetos</a>
@@ -171,18 +173,18 @@
     <a href="#playground">playground</a>
     <a href="#contact">contato</a>
   </nav>
-  <button class="nav__burger" id="burger" aria-label="menu">
+  <button class="nav__burger" id="burger" aria-label="menu" aria-expanded="false" aria-controls="navMobile">
     <span></span><span></span><span></span>
   </button>
 </header>
-<div class="nav__mobile" id="navMobile">
+<nav class="nav__mobile" id="navMobile" aria-label="menu principal">
   <a href="#about">sobre</a>
   <a href="#skills">stack</a>
   <a href="#projects">projetos</a>
   <a href="#terminal">terminal</a>
   <a href="#playground">playground</a>
   <a href="#contact">contato</a>
-</div>
+</nav>
 
 <main id="main">
 
@@ -601,7 +603,7 @@
 
 <footer class="footer">
   <p><code>console.log("feito com &lt;3 e red bull");</code></p>
-  <p class="footer__small">&copy; <span id="year"></span> Artur — todos os direitos reservados. <button type="button" class="konami-hint" aria-label="abrir o controle do código Konami" title="toque para abrir o controle"><span class="ui-icon ui-icon--gamepad" aria-hidden="true"></span>↑↑↓↓←→←→BA</button></p>
+  <p class="footer__small">&copy; <span id="year"></span> Artur — todos os direitos reservados. <button type="button" class="konami-hint" aria-label="↑↑↓↓←→←→BA — abrir o controle do código Konami" title="toque para abrir o controle"><span class="ui-icon ui-icon--gamepad" aria-hidden="true"></span>↑↑↓↓←→←→BA</button></p>
 </footer>
 
 <div id="secretOverlay" class="secret-overlay" role="dialog" aria-modal="true" aria-label="Acesso concedido">

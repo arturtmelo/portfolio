@@ -39,18 +39,20 @@ function unlockScroll() {
 function scrollToId(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
 
 /* ---------- theme engine ---------- */
+// `bg` is each theme's --bg (css/style.css): it colours the browser bar on phones via <meta name="theme-color">
 const THEMES = {
-  matrix: { label: 'Matrix (verde)' },
-  amber: { label: 'Amber CRT' },
-  dracula: { label: 'Dracula' },
-  nord: { label: 'Nord' },
-  synthwave: { label: 'Synthwave' },
+  matrix: { label: 'Matrix (verde)', bg: '#05060a' },
+  amber: { label: 'Amber CRT', bg: '#0a0603' },
+  dracula: { label: 'Dracula', bg: '#191a21' },
+  nord: { label: 'Nord', bg: '#242933' },
+  synthwave: { label: 'Synthwave', bg: '#150826' },
 };
 
 function applyTheme(name) {
   if (!THEMES[name]) name = 'matrix';
   if (name === 'matrix') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', name);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEMES[name].bg);
   try { localStorage.setItem('artur-theme', name); } catch (e) {}
 }
 
@@ -108,6 +110,22 @@ function visibleLoop(el, step, minIntervalMs = 0) {
   kick();
 }
 
+// Runs non-urgent setup once the browser is idle (after the first paint) rather than inside the startup
+// task, so it doesn't stretch the time the page can't respond.
+const whenIdle = (fn, timeout = 1500) => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout }) : setTimeout(fn, 250));
+
+/* ---------- decorative animations rest while off screen ---------- */
+(function restOffscreen() {
+  if (!('IntersectionObserver' in window)) return;
+  // Every running CSS animation costs a style pass on each frame, even a blinking cursor nobody can see:
+  // the icons in "sobre" (background / filter / a custom property), the hero title's glitch, the scroll
+  // hint and the blinking carets all rest until they are back on screen
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => e.target.classList.toggle('is-offscreen', !e.isIntersecting));
+  }, { rootMargin: '80px' });
+  document.querySelectorAll('.fact-card__icon, .scroll-hint, .hero__title, .cursor-blink, .blink-caret, .git-log__commit--head .git-log__dot').forEach((el) => io.observe(el));
+})();
+
 /* ---------- sound (synthesized, no audio files needed) ---------- */
 let audioCtx = null;
 let soundEnabled = true;
@@ -115,11 +133,15 @@ try { soundEnabled = localStorage.getItem('artur-sound') !== 'off'; } catch (e) 
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // a context made or left suspended (Safari/iOS start every one that way) only runs after resume()
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   return audioCtx;
 }
 
 function playTone(freq, duration = 0.08, type = 'square', gain = 0.05, delay = 0) {
   if (!soundEnabled) return;
+  // the browser refuses audio until the visitor has interacted: don't even try (it only logs a warning)
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
   try {
     const ctx = getAudioCtx();
     const startAt = ctx.currentTime + delay;
@@ -179,9 +201,11 @@ function ensureToastStack() {
   if (toastStack) return toastStack;
   toastStack = document.createElement('div');
   toastStack.className = 'toast-stack';
+  toastStack.setAttribute('role', 'status'); // a polite live region: screen readers read each toast out
   document.body.appendChild(toastStack);
   return toastStack;
 }
+whenIdle(ensureToastStack); // exists before the first toast, so that one is announced too
 
 function copyToClipboard(text, { icon, successLabel, successDesc } = {}) {
   const onFail = () => showToast({
@@ -351,10 +375,25 @@ function closeShortcutsModal() {
     rafId = (Math.abs(mx - rx) > 0.1 || Math.abs(my - ry) > 0.1) ? requestAnimationFrame(loop) : 0;
   }
 
+  let live = false;
   window.addEventListener('mousemove', (e) => {
     mx = e.clientX; my = e.clientY;
+    if (!live) {
+      // first movement: appear right under the pointer instead of swooping in from the corner
+      live = true;
+      rx = mx; ry = my;
+      dot.classList.add('is-live');
+      ring.classList.add('is-live');
+    }
     dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
     if (!rafId) rafId = requestAnimationFrame(loop);
+  });
+
+  // out of the window: nothing to point at
+  document.documentElement.addEventListener('mouseleave', () => {
+    live = false;
+    dot.classList.remove('is-live');
+    ring.classList.remove('is-live');
   });
 
   const HOVER_SELECTOR = 'a, button, input, select, .project-card, .fact-card, .palette__result';
@@ -389,17 +428,12 @@ function closeShortcutsModal() {
   function readAccent() {
     accent = getThemeVar('--green', '#39ff8c');
   }
-  readAccent();
-  onThemeChange(readAccent); // repaint color the moment the theme switches
-
   function resize() {
     w = canvas.width = window.innerWidth;
     h = canvas.height = window.innerHeight;
     cols = Math.floor(w / 16);
     drops = new Array(cols).fill(1);
   }
-  window.addEventListener('resize', resize);
-  resize();
 
   // Runs at ~30fps instead of once per display refresh: the full-viewport fade
   // fill is the expensive part, and it was being repeated 60-144x a second (so
@@ -422,31 +456,40 @@ function closeShortcutsModal() {
       }
     }
   }
-  // prefers-reduced-motion: the rest of the site drops its decorative motion,
-  // so the rain freezes into a single sparse still instead of falling
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-    const paintStill = () => {
-      ctx.clearRect(0, 0, w, h);
-      ctx.font = '14px monospace';
-      ctx.fillStyle = accent;
-      const rows = Math.floor(h / 16);
-      for (let i = 0; i < cols; i++) {
-        if (Math.random() > 0.35) continue;
-        const head = Math.floor(Math.random() * rows);
-        for (let k = 0; k < 7 && head - k >= 0; k++) {
-          ctx.globalAlpha = 0.5 * (1 - k / 7);
-          ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 16, (head - k) * 16);
+  // Only a backdrop, so it starts once the page is up and the browser idle: reading the theme colour forces a
+  // full style pass, which used to land inside the startup task.
+  function start() {
+    readAccent();
+    onThemeChange(readAccent); // repaint color the moment the theme switches
+    window.addEventListener('resize', resize);
+    resize();
+    // prefers-reduced-motion: the rest of the site drops its decorative motion,
+    // so the rain freezes into a single sparse still instead of falling
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      const paintStill = () => {
+        ctx.clearRect(0, 0, w, h);
+        ctx.font = '14px monospace';
+        ctx.fillStyle = accent;
+        const rows = Math.floor(h / 16);
+        for (let i = 0; i < cols; i++) {
+          if (Math.random() > 0.35) continue;
+          const head = Math.floor(Math.random() * rows);
+          for (let k = 0; k < 7 && head - k >= 0; k++) {
+            ctx.globalAlpha = 0.5 * (1 - k / 7);
+            ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 16, (head - k) * 16);
+          }
         }
-      }
-      ctx.globalAlpha = 1;
-    };
-    paintStill();
-    window.addEventListener('resize', paintStill);
-    onThemeChange(paintStill);
-    return;
-  }
+        ctx.globalAlpha = 1;
+      };
+      paintStill();
+      window.addEventListener('resize', paintStill);
+      onThemeChange(paintStill);
+      return;
+    }
 
-  visibleLoop(canvas, draw, TICK_MS);
+    visibleLoop(canvas, draw, TICK_MS);
+  }
+  whenIdle(start);
 })();
 
 /* ---------- typewriter roles ---------- */
@@ -1138,8 +1181,21 @@ document.addEventListener('keydown', (e) => {
   const burger = document.getElementById('burger');
   const menu = document.getElementById('navMobile');
   if (!burger || !menu) return;
-  burger.addEventListener('click', () => menu.classList.toggle('open'));
-  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => menu.classList.remove('open')));
+  const setOpen = (open) => {
+    menu.classList.toggle('open', open);
+    burger.setAttribute('aria-expanded', String(open));
+  };
+  burger.addEventListener('click', () => setOpen(!menu.classList.contains('open')));
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setOpen(false)));
+  // Esc closes it and hands focus back to the button; so does a tap anywhere outside
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !menu.classList.contains('open')) return;
+    setOpen(false);
+    burger.focus({ preventScroll: true });
+  });
+  document.addEventListener('click', (e) => {
+    if (menu.classList.contains('open') && !menu.contains(e.target) && !burger.contains(e.target)) setOpen(false);
+  });
 })();
 
 /* ---------- nav controls: command palette trigger + achievements trophy ---------- */
@@ -2742,7 +2798,7 @@ document.addEventListener('keydown', (e) => {
 
   let dragging = false, lastX = 0, lastY = 0;
   board.addEventListener('pointerdown', (e) => {
-    if (solved || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (!puzzle || solved || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const cell = cellAt(e.clientX, e.clientY);
     if (cell < 0) return;
     e.preventDefault();
@@ -2773,10 +2829,10 @@ document.addEventListener('keydown', (e) => {
 
   /* ---- keyboard: arrows walk the trail, Backspace takes a step back, Esc starts over ---- */
   function undo() {
-    if (!solved && path.length > 1) step(path[path.length - 2], false);
+    if (puzzle && !solved && path.length > 1) step(path[path.length - 2], false);
   }
   board.addEventListener('keydown', (e) => {
-    if (solved) return;
+    if (!puzzle || solved) return;
     const head = path[path.length - 1];
     const { rows, cols } = puzzle;
     let target = null;
@@ -2790,7 +2846,7 @@ document.addEventListener('keydown', (e) => {
   });
 
   function reset() {
-    if (solved) return;
+    if (!puzzle || solved) return;
     path = [puzzle.start];
     say('');
     paint();
@@ -2800,7 +2856,7 @@ document.addEventListener('keydown', (e) => {
 
   // shows the next square of the way through; a wrong stretch of the trail is taken back first
   hintBtn.addEventListener('click', () => {
-    if (solved) return;
+    if (!puzzle || solved) return;
     playClick();
     hintsUsed++;
     let k = 0;
@@ -2826,7 +2882,15 @@ document.addEventListener('keydown', (e) => {
     newPuzzle();
   }));
 
-  newPuzzle();
+  // The maze tab is hidden at load (Snake shows first): draw the first puzzle only when it first appears.
+  if ('IntersectionObserver' in window) {
+    const firstShow = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { firstShow.disconnect(); newPuzzle(); }
+    });
+    firstShow.observe(board);
+  } else {
+    newPuzzle();
+  }
 })();
 
 /* ---------- playground: switcher between the three games sharing one window ---------- */

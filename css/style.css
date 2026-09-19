@@ -239,12 +239,16 @@ html { color-scheme: dark; }
   border-radius: 50%;
   transform: translate(-50%, -50%);
   will-change: transform;
+  /* parked at the corner until the pointer really moves (the script adds .is-live) */
+  opacity: 0;
+  transition: opacity .2s ease;
 }
+.cursor-dot.is-live, .cursor-ring.is-live { opacity: 1; }
 .cursor-dot { width: 6px; height: 6px; background: var(--green); box-shadow: 0 0 8px var(--green); }
 .cursor-ring {
   width: 32px; height: 32px;
   border: 1px solid rgba(57,255,140,.5);
-  transition: width .18s ease, height .18s ease, border-color .18s ease, background .18s ease;
+  transition: width .18s ease, height .18s ease, border-color .18s ease, background .18s ease, opacity .2s ease;
 }
 .cursor-ring.is-active { width: 50px; height: 50px; background: rgba(var(--green-rgb),.08); border-color: var(--cyan); }
 @media (pointer: coarse), (hover: none) {
@@ -410,9 +414,11 @@ html { color-scheme: dark; }
   gap: 0;
   z-index: 499;
   transform: translateX(110%);
-  transition: transform .3s ease;
+  /* closed = out of the tab order and away from screen readers, not just off screen */
+  visibility: hidden;
+  transition: transform .3s ease, visibility 0s linear .3s;
 }
-.nav__mobile.open { transform: translateX(0); }
+.nav__mobile.open { transform: translateX(0); visibility: visible; transition: transform .3s ease, visibility 0s; }
 /* padded to a comfortable ~44px tap height (was ~23px) */
 .nav__mobile a { color: var(--muted); font-size: .9rem; padding: .75rem .25rem; }
 
@@ -502,14 +508,15 @@ html { color-scheme: dark; }
   content: '';
   position: absolute;
   left: 0;
+  top: 0;
   width: 1px;
   height: 22px;
   background: linear-gradient(transparent, var(--cyan));
   animation: sideSignal 4.8s linear infinite;
 }
 @keyframes sideSignal {
-  from { top: 100%; }
-  to { top: -22px; }
+  from { transform: translateY(90px); }
+  to { transform: translateY(-22px); }
 }
 @media (max-width: 900px) {
   .side-links { display: none; }
@@ -726,7 +733,10 @@ html { color-scheme: dark; }
   transform: translateX(-50%);
   animation: scrollDot 1.6s ease infinite;
 }
-@keyframes scrollDot { 0% { top: 6px; opacity: 1; } 70% { top: 20px; opacity: 0; } 100% { opacity: 0; } }
+/* set by the script while the element is scrolled out of view: nothing to animate for nobody */
+.is-offscreen, .is-offscreen::before, .is-offscreen::after,
+.scroll-hint.is-offscreen span::before { animation-play-state: paused !important; }
+@keyframes scrollDot { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(14px); opacity: 0; } 100% { transform: translateY(0); opacity: 0; } }
 
 /* ---------- glitch text ---------- */
 .glitch { position: relative; }
@@ -961,7 +971,7 @@ html { color-scheme: dark; }
 .fact-card__icon--globe {
   background: conic-gradient(from var(--globe-angle), var(--green), var(--cyan), var(--green));
   background-size: 100% 100%;
-  animation: globeHue 150s linear infinite, globeSpin 600s linear infinite;
+  animation: globeHue 150s steps(150) infinite, globeSpin 600s linear infinite;
 }
 /* registered so the conic gradient's start angle can animate; without support
    it just stays a static color wheel */
@@ -1312,6 +1322,7 @@ html { color-scheme: dark; }
 /* on open it is visible at once, so the close button can take focus straight away */
 .secret-overlay.open { opacity: 1; visibility: visible; transition: opacity .3s ease, visibility 0s; }
 .secret-overlay:not(.open) { pointer-events: none; }
+.secret-overlay:not(.open) .glitch, .secret-overlay:not(.open) .glitch::before, .secret-overlay:not(.open) .glitch::after { animation-play-state: paused; }
 .secret-overlay__content { text-align: center; }
 .secret-overlay__content .glitch {
   font-family: var(--font-display);
@@ -1852,7 +1863,6 @@ kbd {
 }
 .typing__input:focus { outline: none; }
 .typing__hint { color: var(--muted); font-size: .8rem; text-align: center; max-width: 460px; }
-.typing__done { color: var(--green); font-weight: 700; }
 
 /* ---------- playground: word maze (drag through every square) ---------- */
 .maze {
