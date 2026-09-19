@@ -1293,11 +1293,27 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
   // a bare theme name (as shown by `theme` with no args) also works on its own
   Object.keys(THEMES).forEach((name) => { commands[name] = () => commands.theme([name]); });
 
+  const win = output.closest('.terminal-window');
+
+  // the window starts compact and opens up on the first command; that growth can push
+  // the prompt row below the fold, so bring it back once the height transition is done
+  function keepPromptVisible() {
+    const vh = window.innerHeight;
+    const w = win.getBoundingClientRect();
+    const r = input.closest('form').getBoundingClientRect();
+    // only if they are still looking at the terminal (some of the window is on screen)
+    if (w.top < vh && w.bottom > 0 && r.bottom > vh - 12) window.scrollBy({ top: r.bottom - vh + 24, behavior: 'smooth' });
+  }
+
   function execute(raw) {
     raw = raw.trim();
     if (!raw) return;
+    const firstCommand = win && !win.classList.contains('is-live');
+    if (firstCommand) win.classList.add('is-live');
     print(`<span class="prompt">artur@dev:~$</span> ${raw}`);
     const [cmd, ...args] = raw.split(' ');
+    // `snake` scrolls away to the playground on its own — don't fight that scroll
+    if (firstCommand && cmd.toLowerCase() !== 'snake') setTimeout(keepPromptVisible, 450);
     const fn = commands[cmd.toLowerCase()];
     if (fn) {
       fn(args);
@@ -2229,4 +2245,114 @@ document.addEventListener('keydown', (e) => {
     setTimeout(flip, minMs + Math.random() * spreadMs);
   }
   schedule(6000, 10000); // first reversal after 6-16s, then every 12-35s at random
+})();
+
+/* ---------- corner buttons: the two orbiting dots wander at random ---------- */
+// Every so often one dot (or both) turns round. On MEET_ODDS of those occasions the pair
+// instead glides to face each other across the gap between the buttons — the WhatsApp dot
+// at its bottom, the back-to-top dot at its top — waits a moment, then drifts off again.
+(function fabDotDance() {
+  if (!document.getAnimations || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+  const MEET_ODDS = 0.23;
+  const RAMP_MS = 2400;        // slow to a stop and turn back, not a jolt
+  const HOLD_MS = 2600;        // how long a meeting lasts
+  const RUNWAY_TURNS = 60;     // see addRunway
+  // orient: which way the CSS keyframes turn (the WhatsApp dot uses animation-direction: reverse);
+  // meetAt: the dot's angle, clockwise from 12 o'clock, when it faces its neighbour;
+  // cw: the way it is heading now, +1 clockwise / -1 counter-clockwise
+  const dots = [
+    { el: document.getElementById('backToTop'), orient: 1, period: 35000, cw: 1, meetAt: 0 },
+    { el: document.querySelector('.whatsapp-btn'), orient: -1, period: 70000, cw: -1, meetAt: 180 },
+  ];
+  if (dots.some((d) => !d.el)) return;
+  dots.forEach((d) => { d.anim = null; d.rampId = 0; });
+
+  const mod = (n, m) => ((n % m) + m) % m;
+
+  function grab(d) {
+    if (!d.anim || d.anim.playState === 'idle') {
+      d.anim = document.getAnimations().find((a) => a.animationName === 'fabDotOrbit' && a.effect && a.effect.target === d.el) || null;
+    }
+    return d.anim;
+  }
+  // Running backwards, currentTime would eventually hit 0, where a CSS animation ends and
+  // the dot snaps to the top. Keep a runway of whole turns (visually a no-op) behind it.
+  function addRunway(d) {
+    if (d.anim.currentTime < d.period * 20) d.anim.currentTime += d.period * RUNWAY_TURNS;
+  }
+  function angleOf(d) {
+    const t = getComputedStyle(d.el, '::after').transform;
+    if (!t || t === 'none') return 0;
+    const m = new DOMMatrixReadOnly(t);
+    return mod(Math.atan2(m.b, m.a) * 180 / Math.PI, 360);
+  }
+  const timeFor = (d, deg) => (mod(d.orient * deg / 360, 1) + RUNWAY_TURNS) * d.period;
+
+  function ramp(d, to) {
+    const anim = d.anim;
+    const from = anim.playbackRate;
+    const start = performance.now();
+    const id = ++d.rampId;
+    (function step(now) {
+      if (id !== d.rampId) return; // a newer change took over
+      const t = Math.min(1, (now - start) / RAMP_MS);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      anim.updatePlaybackRate(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(step);
+    })(start);
+  }
+  function turn(d, cw) {
+    d.cw = cw;
+    addRunway(d);
+    ramp(d, cw * d.orient);
+  }
+
+  // Where a dot goes to meet: keep heading the way it was unless that is nearly a full lap.
+  function plan(d) {
+    const from = angleOf(d);
+    const cwDist = mod(d.meetAt - from, 360);
+    const ccwDist = mod(from - d.meetAt, 360);
+    const travel = d.cw > 0
+      ? (cwDist <= 300 ? cwDist : -ccwDist)
+      : (ccwDist <= 300 ? -ccwDist : cwDist);
+    const speed = d.cw * Math.abs(d.anim.playbackRate) * 360000 / d.period; // deg/s, + = clockwise
+    return { from, travel, speed };
+  }
+
+  function meet(done) {
+    dots.forEach((d) => { d.rampId++; addRunway(d); });
+    const plans = dots.map(plan);
+    const T = Math.min(11000, Math.max(5000, Math.max(...plans.map((p) => Math.abs(p.travel))) / 24 * 1000));
+    // a cubic Hermite glide: it starts at the dot's current speed (when that is toward the
+    // target) and comes to rest exactly on it, so there is no jolt at either end
+    const starts = plans.map((p) => {
+      if (Math.sign(p.speed) !== Math.sign(p.travel)) return 0;
+      return Math.sign(p.travel) * Math.min(Math.abs(p.speed) * T / 1000, 3 * Math.abs(p.travel));
+    });
+    dots.forEach((d) => { d.anim.playbackRate = 0; });
+    const t0 = performance.now();
+    (function step(now) {
+      const s = Math.min(1, (now - t0) / T);
+      dots.forEach((d, i) => {
+        const h = starts[i] * (s * s * s - 2 * s * s + s) + plans[i].travel * (-2 * s * s * s + 3 * s * s);
+        d.anim.currentTime = timeFor(d, plans[i].from + h);
+      });
+      if (s < 1) { requestAnimationFrame(step); return; }
+      setTimeout(() => {
+        dots.forEach((d) => turn(d, Math.random() < 0.5 ? 1 : -1));
+        done();
+      }, HOLD_MS);
+    })(t0);
+  }
+
+  const later = (minMs, spreadMs) => setTimeout(event, minMs + Math.random() * spreadMs);
+  function event() {
+    if (!dots.every(grab)) { later(15000, 15000); return; } // animations gone (reduced motion?) — try again later
+    if (Math.random() < MEET_ODDS) { meet(() => later(12000, 18000)); return; }
+    const who = Math.floor(Math.random() * 3); // 0 = back-to-top dot, 1 = WhatsApp dot, 2 = both
+    dots.forEach((d, i) => { if (who === 2 || who === i) turn(d, -d.cw); });
+    later(10000, 18000);
+  }
+  later(5000, 9000); // first event after 5-14s
 })();

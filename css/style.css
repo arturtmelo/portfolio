@@ -1091,10 +1091,16 @@ html { color-scheme: dark; }
 
 /* ---------- interactive terminal section ---------- */
 .terminal-section__hint { color: var(--muted); font-size: .85rem; margin-top: -2rem; margin-bottom: 2rem; }
+/* compact while it only holds the greeting; the first command opens it up */
 .terminal-window--big .terminal-window__body--interactive {
-  height: 320px;
+  height: 7rem;
   overflow-y: auto;
   font-size: .82rem;
+  transition: height .4s cubic-bezier(.2, .8, .2, 1);
+}
+.terminal-window--big.is-live .terminal-window__body--interactive { height: 320px; }
+@media (prefers-reduced-motion: reduce) {
+  .terminal-window--big .terminal-window__body--interactive { transition: none; }
 }
 .terminal-window__body--interactive p { color: var(--text); margin: 0 0 .5rem; white-space: pre-wrap; }
 .terminal-window__body--interactive .accent { color: var(--green); }
