@@ -1983,3 +1983,43 @@ document.addEventListener('keydown', (e) => {
     });
   });
 })();
+
+/* ---------- Idiomas globe: now and then, reverse the spin ---------- */
+(function globeSpinFlip() {
+  const globe = document.querySelector('.fact-card__icon--globe');
+  if (!globe || !globe.getAnimations) return;
+  // absent under prefers-reduced-motion (the CSS drops the animation), so nothing to flip
+  const spin = globe.getAnimations().find((a) => a.animationName === 'globeSpin');
+  if (!spin) return;
+
+  const TURN_MS = 96000; // must match the globeSpin duration in the CSS
+  // Running backwards, currentTime would eventually hit 0, where a CSS
+  // animation ends and the icon snaps back to unrotated. Keep a long runway
+  // of whole turns (which leaves the visible angle unchanged) behind it.
+  const addRunway = () => { if (spin.currentTime < TURN_MS * 20) spin.currentTime += TURN_MS * 200; };
+  addRunway();
+
+  let direction = 1;
+  let rampId = 0;
+  function flip() {
+    addRunway();
+    direction = -direction;
+    const from = spin.playbackRate;
+    const to = direction;
+    const startedAt = performance.now();
+    const RAMP_MS = 2400; // slow to a stop and turn back, like a heavy globe, not a jolt
+    const id = ++rampId;
+    (function ramp(now) {
+      if (id !== rampId) return; // a newer flip took over
+      const t = Math.min(1, (now - startedAt) / RAMP_MS);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      spin.updatePlaybackRate(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(ramp);
+    })(startedAt);
+    schedule(12000, 23000);
+  }
+  function schedule(minMs, spreadMs) {
+    setTimeout(flip, minMs + Math.random() * spreadMs);
+  }
+  schedule(6000, 10000); // first reversal after 6-16s, then every 12-35s at random
+})();
