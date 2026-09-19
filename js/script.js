@@ -155,7 +155,6 @@ const ACHIEVEMENTS = {
   palette: { label: 'Power User', desc: 'Abriu a paleta de comandos (Ctrl+K).' },
   theme: { label: 'Decorador de Terminal', desc: 'Trocou o esquema de cores do site.' },
   arcade: { label: 'Modo Arcade', desc: 'Comeu a primeira maçã no Snake, lá no playground.' },
-  hacker: { label: 'Script Kiddie', desc: 'Tentou invadir o mainframe com o comando hack.' },
   speedtyper: { label: 'Dedos de Fibra Óptica', desc: 'Bateu 60+ WPM na corrida de digitação.' },
   maze: { label: 'Rato de Labirinto', desc: 'Resolveu 3 labirintos de palavras no playground.' },
 };
@@ -262,6 +261,8 @@ const SHORTCUTS = [
   { keys: ['Esc'], desc: 'fechar modais ou restaurar uma janela maximizada' },
   { keys: ['↑', '↑', '↓', '↓', '←', '→', '←', '→', 'B', 'A'], desc: 'código Konami — no celular, toque em ↑↑↓↓←→←→BA no rodapé' },
   { keys: ['WASD'], alt: 'setas', desc: 'controlar o Snake, no playground' },
+  { keys: ['Tab'], desc: 'completar comandos e argumentos no terminal' },
+  { keys: ['↑', '↓'], desc: 'percorrer o histórico do terminal' },
 ];
 function openShortcutsModal() {
   if (!shortcutsModalEl) {
@@ -1214,13 +1215,23 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
   const output = document.getElementById('termOutput');
   const input = document.getElementById('termInput');
   if (!output || !input) return;
+  const isCoarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
 
-  const jokes = [
-    'Por que o programador foi ao médico? Porque tinha um vírus. Muito engraçado, eu sei.',
-    '99 bugs no código. Corrige um, sobem 127.',
-    'Existem 10 tipos de pessoas: as que entendem binário e as que não entendem.',
-    'Não é bug, é uma feature não documentada.'
-  ];
+  /* ---- building output ----
+     The terminal body keeps line breaks (white-space: pre-wrap), so every reply is built from block spans
+     and joined with no whitespace between them — a stray newline in a template would show up as a gap. */
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const line = (html) => `<span class="term-line">${html}</span>`;
+  const gap = '<span class="term-gap"></span>';
+  const dot = ' <span class="muted">·</span> ';
+  const muted = (text) => `<span class="muted">${esc(text)}</span>`;
+  const row = (label, html) => `<span class="term-row"><span class="term-label">${esc(label)}</span><span class="term-value">${html}</span></span>`;
+  // a command you can tap: it runs `cmd` exactly as if it had been typed
+  const chip = (cmd, label) => `<button type="button" class="term-cmd" data-cmd="${esc(cmd)}">${esc(label == null ? cmd : label)}</button>`;
+  const link = (href, text) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+  // tappable commands side by side; a long list wraps at any point, with no separators left dangling at a line's end
+  const chips = (items) => `<span class="term-chips">${items.join('')}</span>`;
+  const shorten = (text, max) => (text.length <= max ? text : `${text.slice(0, max).replace(/\s+\S*$/, '')}…`);
 
   function print(html) {
     const p = document.createElement('p');
@@ -1229,82 +1240,298 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
     output.scrollTop = output.scrollHeight;
   }
 
-  function banner() {
-    print(`<span class="accent">
+  const jokes = [
+    'Por que o programador foi ao médico? Porque tinha um vírus. Muito engraçado, eu sei.',
+    '99 bugs no código. Corrige um, sobem 127.',
+    'Existem 10 tipos de pessoas: as que entendem binário e as que não entendem.',
+    'Não é bug, é uma feature não documentada.',
+    'Um SQL entra num bar, vai até duas mesas e pergunta: "posso me juntar a vocês?"',
+    'Funciona na minha máquina. Vamos então entregar a minha máquina.',
+  ];
+
+  const BANNER = `<span class="accent">
    ___         __
   / _ | ____/ /___ __________
  / __ |/ __/ __/ // / __/ -_)
 /_/ |_/_/  \\__/\\_,_/_/  \\__/
-</span>Artur Tavares de Melo // Desenvolvedor Full-Stack`);
-  }
+</span>Artur Tavares de Melo // Desenvolvedor Full-Stack`;
 
+  /* ---- what the site already says about itself: projects come from the cards, so they can't drift ---- */
+  function projectList() {
+    return [...document.querySelectorAll('.projects__grid .project-card')].map((card) => {
+      const file = card.querySelector('.terminal-window__title')?.textContent.trim() || '';
+      return {
+        file,
+        alias: file.toLowerCase().replace(/\/$/, '').replace(/\.[a-z]+$/, ''),
+        name: card.querySelector('h3')?.textContent.trim() || file,
+        desc: (card.querySelector('.project-card__body p')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        tags: [...card.querySelectorAll('.tags span')].map((t) => t.textContent.trim()),
+        links: [...card.querySelectorAll('.project-card__links a')].map((a) => ({ label: a.textContent.replace(/[\u2197↗]/g, '').trim(), href: a.href })),
+      };
+    });
+  }
+  const findProject = (name) => {
+    const key = name.toLowerCase().replace(/\/$/, '').replace(/\.[a-z]+$/, '');
+    return projectList().find((p) => p.alias === key || p.file.toLowerCase() === name.toLowerCase());
+  };
+  const projectLinkItems = (p) => p.links.map((l) => link(l.href, l.label));
+  const projectDetail = (p) => [
+    line(`<span class="accent">${esc(p.file)}</span> — ${esc(p.name)}`),
+    line(esc(p.desc)),
+    line(`${p.tags.map((t) => `<span class="term-tag">${esc(t)}</span>`).join(' ')}`),
+    line(p.links.length ? chips([...projectLinkItems(p), chip('open ' + p.alias, 'abrir')]) : muted('ainda sem link público')),
+  ].join('');
+  const whatsappHref = () => document.querySelector('.whatsapp-btn')?.href || '';
+  const themeNow = () => document.documentElement.getAttribute('data-theme') || 'matrix';
+  const openTargets = () => {
+    const targets = {};
+    projectList().forEach((p) => { targets[p.alias] = { label: p.name, links: p.links }; });
+    targets.github = { label: 'GitHub', links: [{ label: 'github', href: 'https://github.com/arturtmelo/' }] };
+    targets.linkedin = { label: 'LinkedIn', links: [{ label: 'linkedin', href: 'https://www.linkedin.com/in/arturtmelo/' }] };
+    if (whatsappHref()) targets.whatsapp = { label: 'WhatsApp', links: [{ label: 'whatsapp', href: whatsappHref() }] };
+    return targets;
+  };
+  const FILES = () => [...projectList().map((p) => p.file), 'tutor_de_logica.md', 'curriculo.pdf', 'sonhos_grandes/'];
+
+  /* ---- the commands ---- */
   const commands = {
-    help: () => print(`Comandos disponíveis:<br>
-<span class="accent">about</span> — sobre mim &nbsp;
-<span class="accent">skills</span> — minhas habilidades &nbsp;
-<span class="accent">projects</span> — meus projetos<br>
-<span class="accent">experience</span> — experiência profissional &nbsp;
-<span class="accent">contact</span> — como falar comigo<br>
-<span class="accent">whoami</span> · <span class="accent">ls</span> · <span class="accent">date</span> · <span class="accent">banner</span><br>
-<span class="accent">theme &lt;matrix|amber|dracula|nord|synthwave&gt;</span> — troca as cores do site<br>
-<span class="accent">snake</span> — abre o jogo escondido no playground &nbsp;
-<span class="accent">hack</span> — tenta invadir o mainframe<br>
-<span class="accent">redbull</span> · <span class="accent">joke</span> · <span class="accent">github</span> · <span class="accent">linkedin</span> · <span class="accent">konami</span> · <span class="accent">clear</span>${isCoarsePointer ? '' : `<br>
-dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</span>) em qualquer lugar da página pra abrir a paleta de comandos.`}`),
-    about: () => print('Artur Tavares de Melo — desenvolvedor full-stack (C#/.NET, JS) com passagem por Economia antes da Ciência da Computação. Curioso, teimoso e movido a Red Bull.'),
-    skills: () => print('C# · .NET · Java · Python · JavaScript · React · Vue · Angular · Node.js · SQL/MySQL · Docker · Azure · CI/CD'),
-    experience: () => print('Intelectah (2023–2024) — full-stack C#/.NET + Azure, APIs escaláveis, CI/CD, testes E2E.<br>Hurtz Importação (2021–2022) — apps internas em Java/React, automação com Python.'),
-    projects: () => print('Confira a seção <span class="accent">#projetos</span> logo acima — ou digite <span class="accent">ls</span>.'),
-    contact: () => print('email: <span class="accent">arturtmelo1@gmail.com</span> — também disponível na seção de contato ↓'),
+    help: () => print([
+      line('Comandos — toque em um, ou digite:'),
+      row('sobre mim', chips(['about', 'skills', 'experience', 'education', 'languages', 'projects', 'contact'].map((c) => chip(c)))),
+      row('ações', chips(['open', 'cat', 'cv', 'email', 'github', 'linkedin'].map((c) => chip(c)))),
+      row('sistema', chips(['whoami', 'ls', 'history', 'neofetch', 'git log', 'date', 'banner', 'clear'].map((c) => chip(c)))),
+      row('site', chips(['theme', 'sound', 'palette', 'achievements', 'konami'].map((c) => chip(c)))),
+      row('diversão', chips(['redbull', 'joke', 'sudo'].map((c) => chip(c)))),
+      line(isCoarsePointer
+        ? '<span class="muted">dica: em qualquer resposta, toque nos comandos.</span>'
+        : '<span class="muted">dica: <span class="accent">Tab</span> completa, <span class="accent">↑</span>/<span class="accent">↓</span> percorre o histórico, <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</span>) abre a paleta.</span>'),
+    ].join('')),
+
+    about: () => print([
+      line('<span class="accent">Artur Tavares de Melo</span> — desenvolvedor full-stack com foco em C#/.NET.'),
+      line('Passou por Economia (UFPE) antes de migrar pra Gestão de TI (Cesar School) — e ainda calcula o "ROI" de cada refactor.'),
+      line('Curioso, teimoso e movido a Red Bull.'),
+    ].join('')),
+
+    skills: () => print([
+      row('back-end', 'C# · .NET · Java · Python · Node.js'),
+      row('front-end', 'JavaScript · React · Vue · Angular'),
+      row('dados', 'SQL / MySQL'),
+      row('cloud e ops', 'Azure · Docker · CI/CD (testes de carga, unitários, de integração e E2E)'),
+    ].join('')),
+
+    experience: () => print([
+      line('<span class="accent">Intelectah</span> <span class="muted">· 2023–2024</span>'),
+      line('Full-stack C#/.NET + Azure: APIs escaláveis, pipelines de CI/CD e testes de carga, unitários, de integração e E2E.'),
+      gap,
+      line('<span class="accent">Hurtz Importação</span> <span class="muted">· 2021–2022</span>'),
+      line('Aplicações internas em Java e React; relatórios automatizados com Python.'),
+    ].join('')),
+
+    education: () => print([
+      line('<span class="accent">Cesar School</span> <span class="muted">· 2023–2025</span> — Gestão de TI'),
+      line('<span class="accent">UFPE</span> <span class="muted">· 2020–2022</span> — Economia'),
+      line(muted('fora da sala de aula: tutor voluntário de lógica e estrutura de dados.')),
+    ].join('')),
+
+    languages: () => print([
+      row('inglês', 'fluente (intercâmbio nos EUA)'),
+      row('espanhol', 'sim, também'),
+      row('português', 'de nascença — e é o idioma deste terminal'),
+    ].join('')),
+
+    projects: () => {
+      const list = projectList();
+      if (!list.length) { print('nenhum projeto encontrado.'); return; }
+      print(list.map((p) => [
+        line(`<span class="accent">${esc(p.file)}</span> — ${esc(p.name)} <span class="term-nowrap">${chip('cat ' + p.file, 'detalhes')}</span>`),
+        line(muted(shorten(p.desc, 110))),
+        line(chips([...p.tags.map((t) => `<span class="term-tag">${esc(t)}</span>`), ...(p.links.length ? projectLinkItems(p) : [muted('ainda sem link público')])])),
+      ].join('')).join(gap));
+    },
+
+    contact: () => print([
+      row('e-mail', chips([link('mailto:arturtmelo1@gmail.com', 'arturtmelo1@gmail.com'), chip('email', 'copiar')])),
+      row('linkedin', link('https://www.linkedin.com/in/arturtmelo/', 'linkedin.com/in/arturtmelo')),
+      row('github', link('https://github.com/arturtmelo/', 'github.com/arturtmelo')),
+      whatsappHref() ? row('whatsapp', link(whatsappHref(), 'chamar no WhatsApp')) : '',
+      line(muted('aberto a oportunidades, projetos e colaborações — ou só a trocar uma ideia sobre tecnologia.')),
+    ].join('')),
+
+    email: () => {
+      copyToClipboard('arturtmelo1@gmail.com', { successDesc: 'arturtmelo1@gmail.com está na área de transferência.' });
+      print(`copiando ${link('mailto:arturtmelo1@gmail.com', 'arturtmelo1@gmail.com')} para a área de transferência...`);
+    },
+
+    github: () => commands.open(['github']),
+    linkedin: () => commands.open(['linkedin']),
+
+    cv: () => {
+      print('abrindo a versão de impressão do currículo — escolha "Salvar como PDF".');
+      document.getElementById('downloadCvBtn')?.click();
+    },
+
+    open: (args) => {
+      const targets = openTargets();
+      const name = (args[0] || '').toLowerCase().replace(/\/$/, '').replace(/\.[a-z]+$/, '');
+      const target = targets[name];
+      if (!target) {
+        print([
+          line(`uso: <span class="accent">open</span> &lt;destino&gt; — para onde?`),
+          line(chips(Object.keys(targets).map((k) => chip('open ' + k, k)))),
+        ].join(''));
+        return;
+      }
+      if (!target.links.length) { print(`${esc(target.label)} ainda não tem link público.`); return; }
+      // "site" beats "código" when both exist; `open <destino> codigo` picks the repository
+      const wantCode = /^c[oó]digo?$/.test((args[1] || '').toLowerCase());
+      const pick = (wantCode ? target.links.find((l) => /c[oó]digo/i.test(l.label)) : null)
+        || target.links.find((l) => /site/i.test(l.label)) || target.links[0];
+      window.open(pick.href, '_blank', 'noopener');
+      print(`abrindo ${esc(target.label)}... ${link(pick.href, 'se nada abrir, clique aqui')}`);
+    },
+
     whoami: () => print('artur — nível de acesso: root (no seu próprio código, pelo menos)'),
-    ls: () => print('recifle/&nbsp;&nbsp;rover.cs&nbsp;&nbsp;mercado.tsx&nbsp;&nbsp;financas.tsx&nbsp;&nbsp;tutor_de_logica.md&nbsp;&nbsp;curriculo.pdf&nbsp;&nbsp;sonhos_grandes/'),
+
+    ls: () => print(line(chips(FILES().map((f) => chip('cat ' + f, f))))),
+
+    cat: (args) => {
+      const raw = args[0] || '';
+      const name = raw.toLowerCase();
+      if (!name) { print(line(`uso: <span class="accent">cat</span> &lt;arquivo&gt; — veja o que há com ${chip('ls')}`)); return; }
+      const project = findProject(name);
+      if (project) { print(projectDetail(project)); return; }
+      if (name === 'tutor_de_logica.md') {
+        print([
+          line('<span class="accent"># tutor voluntário de lógica e estrutura de dados</span>'),
+          line('Ensinar é a melhor forma de revisar o que você acha que já sabe.'),
+        ].join(''));
+      } else if (name === 'curriculo.pdf') {
+        print(`arquivo binário — use ${chip('cv')} para abrir a versão de impressão (Salvar como PDF).`);
+      } else if (name.replace(/\/$/, '') === 'sonhos_grandes') {
+        print('cat: sonhos_grandes/: é um diretório — e dos grandes.');
+      } else {
+        print(`cat: ${esc(raw)}: arquivo não encontrado — veja ${chip('ls')}`);
+      }
+    },
+
+    history: () => {
+      if (!history.length) { print(muted('histórico vazio — ainda.')); return; }
+      print(history.map((h, i) => line(`<span class="muted">${String(i + 1).padStart(3)}</span>  ${chip(h)}`)).join(''));
+    },
+
+    neofetch: () => {
+      print(BANNER);
+      print([
+        row('usuário', 'artur@dev'),
+        row('os', 'portfólio feito à mão — HTML, CSS e JavaScript, sem framework'),
+        row('shell', 'bash de mentira, comandos de verdade'),
+        row('tema', esc(THEMES[themeNow()]?.label || themeNow())),
+        row('uptime', esc(document.getElementById('statUptime')?.textContent.trim() || '—')),
+        row('stack', 'C# · .NET · Azure · React'),
+        row('conquistas', `${unlocked.size}/${Object.keys(ACHIEVEMENTS).length}`),
+        row('combustível', 'Red Bull'),
+      ].join(''));
+    },
+
+    git: (args) => {
+      const sub = (args[0] || '').toLowerCase();
+      if (sub === 'log') {
+        const commits = [...document.querySelectorAll('.git-log__commit')].map((c) => ({
+          hash: c.querySelector('.git-log__hash')?.textContent.trim() || '',
+          date: c.querySelector('.git-log__date')?.textContent.trim() || '',
+          msg: (c.querySelector('.git-log__msg')?.textContent || '').replace(/\s+/g, ' ').trim(),
+          detail: (c.querySelector('.git-log__detail')?.textContent || '').replace(/\s+/g, ' ').trim(),
+        }));
+        print(commits.map((c) => line(`<span class="term-hash">${esc(c.hash)}</span> ${muted(c.date)}`) + line(esc(c.msg)) + (c.detail ? line(muted(c.detail)) : '')).join(gap));
+      } else if (sub === 'status') {
+        print([
+          line('no branch <span class="accent">main</span>'),
+          line('nada a commitar, árvore de trabalho limpa.'),
+          line(muted('(já o estoque de Red Bull...)')),
+        ].join(''));
+      } else {
+        print(`git: '${esc(sub || '')}' não é um comando do git por aqui — tente ${chip('git log')} ou ${chip('git status')}.`);
+      }
+    },
+
     date: () => print(new Date().toString()),
-    banner: banner,
-    redbull: () => print(`<span class="term-icon term-icon--zap" aria-hidden="true"></span> Energia?<br>
-<span class="muted">250ml · ~113 kcal · 27g açúcar · 80mg cafeína</span>`),
-    joke: () => print(jokes[Math.floor(Math.random() * jokes.length)]),
-    github: () => print('abrindo o github do Artur ... <a href="https://github.com/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
-    linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
-    sudo: () => print('Bonita tentativa. Você não está na lista de sudoers. Esse incidente será reportado. ' + uiIcon('shield')),
-    konami: () => { print('código Konami: ↑ ↑ ↓ ↓ ← → ← → B A — abrindo o controle ' + uiIcon('gamepad')); openKonamiPad?.(); },
+    banner: () => print(BANNER),
+
     theme: (args) => {
       const name = (args[0] || '').toLowerCase();
       if (THEMES[name]) {
         applyTheme(name);
         unlockAchievement('theme');
-        print(`tema alterado para: <span class="accent">${THEMES[name].label}</span>`);
+        print(`tema alterado para: <span class="accent">${esc(THEMES[name].label)}</span>`);
       } else {
-        print('temas disponíveis: ' + Object.keys(THEMES).map(k => `<span class="accent">${k}</span>`).join(', '));
+        print([
+          line('temas — toque em um:'),
+          line(chips(Object.keys(THEMES).map((k) => chip('theme ' + k, k + (k === themeNow() ? ' *' : ''))))),
+        ].join(''));
       }
     },
-    snake: () => {
-      scrollToId('playground');
-      print('abrindo o snake... boa sorte ' + uiIcon('snake'));
+
+    sound: (args) => {
+      const want = (args[0] || '').toLowerCase();
+      if (want !== 'on' && want !== 'off') {
+        print(`som: <span class="accent">${soundEnabled ? 'ligado' : 'desligado'}</span>${dot}${chip('sound on')}${dot}${chip('sound off')}`);
+        return;
+      }
+      if ((want === 'on') !== soundEnabled) document.querySelector('.nav__iconbtn[aria-label="ativar ou desativar o som"]')?.click();
+      print(`som ${want === 'on' ? 'ligado' : 'desligado'}.`);
     },
-    hack: () => {
-      const p = document.createElement('p');
-      output.appendChild(p);
-      let pct = 0;
-      const iv = setInterval(() => {
-        pct = Math.min(100, pct + 4 + Math.floor(Math.random() * 8));
-        const filled = Math.round(pct / 5);
-        p.innerHTML = `invadindo o mainframe... <span class="accent">[${'█'.repeat(filled)}${'░'.repeat(20 - filled)}] ${pct}%</span>`;
-        output.scrollTop = output.scrollHeight;
-        playClick();
-        if (pct >= 100) {
-          clearInterval(iv);
-          setTimeout(() => {
-            print('ACESSO NEGADO. relaxa, isso é só uma piada — ninguém invade nada por aqui. ' + uiIcon('eye'));
-            unlockAchievement('hacker');
-          }, 500);
-        }
-      }, 150);
-    },
+
+    palette: () => { print('abrindo a paleta de comandos...'); openPalette(); },
+    achievements: () => { print(`abrindo as conquistas (${unlocked.size}/${Object.keys(ACHIEVEMENTS).length})... ${uiIcon('trophy')}`); openAchievementsModal(); },
+    konami: () => { print('código Konami: ↑ ↑ ↓ ↓ ← → ← → B A — abrindo o controle ' + uiIcon('gamepad')); openKonamiPad?.(); },
+
+    redbull: () => print(`<span class="term-icon term-icon--zap" aria-hidden="true"></span> Energia?${line(muted('250ml · ~113 kcal · 27g açúcar · 80mg cafeína'))}`),
+    joke: () => print(esc(jokes[Math.floor(Math.random() * jokes.length)])),
+    sudo: () => print('Bonita tentativa. Você não está na lista de sudoers. Esse incidente será reportado. ' + uiIcon('shield')),
+    echo: (args) => print(esc(args.join(' '))),
     clear: () => { output.innerHTML = ''; },
-    echo: (args) => print(args.join(' ') || ''),
   };
-  // a bare theme name (as shown by `theme` with no args) also works on its own
-  Object.keys(THEMES).forEach((name) => { commands[name] = () => commands.theme([name]); });
+
+  // Portuguese names work too, since the site speaks it
+  const ALIASES = {
+    ajuda: 'help', sobre: 'about', habilidades: 'skills', experiencia: 'experience', formacao: 'education',
+    idiomas: 'languages', projetos: 'projects', contato: 'contact', curriculo: 'cv', conquistas: 'achievements',
+    historico: 'history', limpar: 'clear', ll: 'ls', cls: 'clear', abrir: 'open',
+  };
+  // a bare theme name (as `theme` lists them) also works on its own — but isn't offered by Tab
+  const THEME_SHORTCUTS = new Set(Object.keys(THEMES));
+  THEME_SHORTCUTS.forEach((name) => { commands[name] = () => commands.theme([name]); });
+
+  // what Tab can complete after the command word
+  const argOptions = (cmd) => ({
+    theme: Object.keys(THEMES),
+    open: Object.keys(openTargets()),
+    cat: FILES(),
+    sound: ['on', 'off'],
+    git: ['log', 'status'],
+  })[cmd] || [];
+
+  const distance = (a, b) => {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  };
+  function suggestionsFor(word) {
+    const known = [...Object.keys(commands).filter((c) => !THEME_SHORTCUTS.has(c)), ...Object.keys(ALIASES)];
+    return known.map((c) => [c, distance(word, c)]).filter(([, d]) => d <= Math.max(1, Math.floor(word.length / 3))).sort((a, b) => a[1] - b[1]).slice(0, 3).map(([c]) => c);
+  }
+
+  /* ---- history: what was run, walked with the arrow keys (and listed by `history`) ---- */
+  const history = [];
+  let histPos = -1;
+  let draft = '';
+  function remember(raw) {
+    if (history[history.length - 1] !== raw) history.push(raw);
+    if (history.length > 50) history.shift();
+    histPos = -1;
+  }
 
   const win = output.closest('.terminal-window');
 
@@ -1323,21 +1550,56 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     if (!raw) return;
     const firstCommand = win && !win.classList.contains('is-live');
     if (firstCommand) win.classList.add('is-live');
-    print(`<span class="prompt">artur@dev:~$</span> ${raw}`);
-    const [cmd, ...args] = raw.split(' ');
-    // `snake` scrolls away to the playground on its own — don't fight that scroll
-    if (firstCommand && cmd.toLowerCase() !== 'snake') setTimeout(keepPromptVisible, 450);
-    const fn = commands[cmd.toLowerCase()];
+    print(`<span class="prompt">artur@dev:~$</span> ${esc(raw)}`);
+    remember(raw);
+    const [word, ...args] = raw.split(/\s+/);
+    if (firstCommand) setTimeout(keepPromptVisible, 450);
+    const name = ALIASES[word.toLowerCase()] || word.toLowerCase();
+    const fn = Object.prototype.hasOwnProperty.call(commands, name) ? commands[name] : null;
     if (fn) {
       fn(args);
       unlockAchievement('terminal');
-    } else {
-      print(`comando não encontrado: <span class="accent">${cmd}</span>. digite <span class="accent">help</span>.`);
+      return;
     }
+    const near = suggestionsFor(word.toLowerCase());
+    print(`comando não encontrado: <span class="accent">${esc(word)}</span>.${near.length ? ` quis dizer ${near.map((c) => chip(c)).join(' ou ')}?` : ''} digite ${chip('help')}.`);
+  }
+
+  /* ---- Tab completes; the arrows walk the history ---- */
+  function complete() {
+    const parts = input.value.split(/\s+/);
+    const first = parts[0].toLowerCase();
+    const options = parts.length === 1
+      ? Object.keys(commands).filter((c) => !THEME_SHORTCUTS.has(c) && c.startsWith(first))
+      : parts.length === 2 ? argOptions(first).filter((o) => o.toLowerCase().startsWith(parts[1].toLowerCase())) : [];
+    if (!options.length) return;
+    let common = options[0];
+    options.forEach((o) => { while (!o.toLowerCase().startsWith(common.toLowerCase())) common = common.slice(0, -1); });
+    const head = parts.length === 1 ? '' : `${parts[0]} `;
+    const next = head + common + (options.length === 1 ? ' ' : '');
+    if (options.length > 1 && next === input.value) print(line(chips(options.map((o) => chip(head + o, o))))); // nothing left to add: show the choices
+    input.value = next;
   }
 
   input.addEventListener('keydown', (e) => {
     if (e.key.length === 1) playClick();
+    if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      complete();
+    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && history.length) {
+      e.preventDefault();
+      if (histPos === -1) draft = input.value;
+      histPos = e.key === 'ArrowUp' ? Math.min(histPos + 1, history.length - 1) : Math.max(histPos - 1, -1);
+      input.value = histPos === -1 ? draft : history[history.length - 1 - histPos];
+    }
+  });
+
+  // tapping a command in any reply runs it
+  output.addEventListener('click', (e) => {
+    const btn = e.target.closest?.('.term-cmd');
+    if (!btn || !output.contains(btn)) return;
+    execute(btn.dataset.cmd);
+    if (!isCoarsePointer) input.focus({ preventScroll: true });
   });
 
   // a <form> submit (not a raw keydown check) is what reliably catches the
@@ -1362,7 +1624,6 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
   // autofocus when scrolled into view — but never steal the arrow keys while Snake is running,
   // and never on touch devices (auto-opening the virtual keyboard on scroll is jarring there;
   // mobile users tap the input themselves when they want to type)
-  const isCoarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
   const termSection = document.getElementById('terminal');
   const focusIo = new IntersectionObserver((entries) => {
     entries.forEach(entry => { if (entry.isIntersecting && !snakeIsPlaying && !isCoarsePointer) input.focus({ preventScroll: true }); });
@@ -1407,15 +1668,22 @@ const PALETTE_ACTIONS = [
     }
   },
   {
-    label: 'Invadir o mainframe', hint: 'hack terminal easter egg', run: () => {
+    label: 'Ver neofetch (terminal)', hint: 'neofetch sistema informações terminal', run: () => {
       scrollToId('terminal');
-      setTimeout(() => terminalRunCommand && terminalRunCommand('hack'), 450);
+      setTimeout(() => terminalRunCommand && terminalRunCommand('neofetch'), 450);
     }
   },
+  {
+    label: 'Ver a carreira como git log (terminal)', hint: 'git log carreira histórico commits', run: () => {
+      scrollToId('terminal');
+      setTimeout(() => terminalRunCommand && terminalRunCommand('git log'), 450);
+    }
+  },
+  { label: 'Baixar currículo (PDF)', hint: 'cv curriculo imprimir pdf', run: () => document.getElementById('downloadCvBtn')?.click() },
   { label: 'Ver conquistas', hint: 'achievements trophy troféu', run: () => openAchievementsModal() },
   { label: 'Ver atalhos de teclado', hint: 'shortcuts keyboard ajuda ?', run: () => openShortcutsModal() },
-  { label: 'Abrir GitHub', hint: 'código repositório', run: () => window.open('https://github.com/', '_blank') },
-  { label: 'Abrir LinkedIn', hint: 'linkedin perfil', run: () => window.open('https://www.linkedin.com/', '_blank') },
+  { label: 'Abrir GitHub', hint: 'código repositório', run: () => window.open('https://github.com/arturtmelo/', '_blank', 'noopener') },
+  { label: 'Abrir LinkedIn', hint: 'linkedin perfil', run: () => window.open('https://www.linkedin.com/in/arturtmelo/', '_blank', 'noopener') },
 ];
 
 function buildPalette() {
@@ -2893,7 +3161,7 @@ function openSecretOverlay() {
   const spin = globe.getAnimations().find((a) => a.animationName === 'globeSpin');
   if (!spin) return;
 
-  const TURN_MS = 96000; // must match the globeSpin duration in the CSS
+  const TURN_MS = 600000; // must match the globeSpin duration in the CSS (ten minutes a turn: it barely moves)
   // Running backwards, currentTime would eventually hit 0, where a CSS
   // animation ends and the icon snaps back to unrotated. Keep a long runway
   // of whole turns (which leaves the visible angle unchanged) behind it.

@@ -439,25 +439,84 @@ html { color-scheme: dark; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.3rem;
+  gap: .9rem;
 }
-.side-links a {
-  color: var(--muted);
+.side-link {
+  position: relative;
   display: flex;
-  transition: color .2s ease, transform .2s ease;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  transition: transform .2s ease;
 }
-.side-links a:hover { color: var(--green); transform: translateY(-3px); }
+/* the shared themed icons (green to cyan), muted until you point at one */
+.side-link .ui-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: 0;
+  opacity: .55;
+  filter: grayscale(1);
+  transition: opacity .2s ease, filter .25s ease, transform .2s ease;
+}
+.side-link:hover, .side-link:focus-visible { transform: translateY(-3px); }
+.side-link:hover .ui-icon, .side-link:focus-visible .ui-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(var(--cyan-rgb), .75));
+  transform: scale(1.12);
+}
+/* what the link points at, slid out from beside the icon */
+.side-link__label {
+  position: absolute;
+  left: calc(100% + .45rem);
+  top: 50%;
+  padding: .3rem .65rem;
+  background: rgba(10, 14, 23, .94);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-6px, -50%);
+  transition: opacity .18s ease, transform .18s ease, border-color .18s ease;
+}
+.side-link:hover .side-link__label, .side-link:focus-visible .side-link__label {
+  opacity: 1;
+  border-color: rgba(var(--cyan-rgb), .55);
+  transform: translate(0, -50%);
+}
 .side-links__line {
+  position: relative;
   width: 1px;
   height: 90px;
   background: linear-gradient(var(--muted), transparent);
   opacity: .4;
+  overflow: hidden;
+}
+/* a small pulse of light travels up the line, like a signal heading for the icons */
+.side-links__line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 1px;
+  height: 22px;
+  background: linear-gradient(transparent, var(--cyan));
+  animation: sideSignal 4.8s linear infinite;
+}
+@keyframes sideSignal {
+  from { top: 100%; }
+  to { top: -22px; }
 }
 @media (max-width: 900px) {
   .side-links { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .side-links a { transition: none; }
+  .side-link, .side-link .ui-icon, .side-link__label { transition: none; }
+  .side-links__line::after { animation: none; display: none; }
 }
 
 /* ---------- back to top ---------- */
@@ -887,7 +946,8 @@ html { color-scheme: dark; }
    differently — and on its own clock — so they never move in lockstep:
    formação  → a narrow cyan highlight sweeps across, then rests (10s)
    foco atual → a cyan glow drifts around inside, like a signal (14s)
-   idiomas   → a conic color wheel turns slowly (30s), on a 96s globe spin */
+   idiomas   → a conic color wheel turns very slowly (150s), on a globe that takes ten
+               minutes a turn — it all but stands still */
 .fact-card__icon--gradcap {
   background: linear-gradient(115deg, var(--green) 0%, var(--green) 43%, var(--cyan) 50%, var(--green) 57%, var(--green) 100%);
   background-size: 300% 100%;
@@ -901,7 +961,7 @@ html { color-scheme: dark; }
 .fact-card__icon--globe {
   background: conic-gradient(from var(--globe-angle), var(--green), var(--cyan), var(--green));
   background-size: 100% 100%;
-  animation: globeHue 30s linear infinite, globeSpin 96s linear infinite;
+  animation: globeHue 150s linear infinite, globeSpin 600s linear infinite;
 }
 /* registered so the conic gradient's start angle can animate; without support
    it just stays a static color wheel */
@@ -982,6 +1042,7 @@ html { color-scheme: dark; }
 .git-log__hash { color: var(--cyan); font-size: .75rem; }
 .git-log__date { color: var(--muted); font-size: .7rem; }
 .git-log__msg { margin: 0; font-size: .85rem; color: var(--text); }
+.git-log__detail { margin: .3rem 0 0; font-size: .78rem; line-height: 1.55; color: var(--muted); }
 .git-log__tag { font-weight: 700; margin-right: .3rem; }
 .git-log__tag--feat { color: var(--green); }
 .git-log__tag--refactor { color: var(--yellow); }
@@ -1124,6 +1185,37 @@ html { color-scheme: dark; }
   color: var(--text);
   font-family: var(--font-mono);
   font-size: .85rem;
+}
+
+/* ---------- terminal replies: tappable commands, tidy rows ---------- */
+.term-cmd {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--green);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(var(--green-rgb), .5);
+  text-underline-offset: 3px;
+}
+.term-cmd:hover { color: var(--cyan); text-decoration-color: currentColor; }
+@media (pointer: coarse) {
+  .term-cmd { padding: .45rem .1rem; }
+}
+.term-line { display: block; }
+.term-chips { display: flex; flex-wrap: wrap; gap: .1rem 1.1rem; }
+.term-nowrap { white-space: nowrap; }
+.term-gap { display: block; height: .5rem; }
+.term-row { display: flex; gap: .8rem; margin-bottom: .15rem; }
+.term-label { flex: 0 0 6.6rem; color: var(--muted); }
+.term-value { flex: 1; min-width: 0; }
+.term-tag { color: var(--cyan); font-size: .75rem; }
+.term-hash { color: var(--cyan); }
+.terminal-window__body--interactive a { color: var(--cyan); text-decoration: underline dotted; text-underline-offset: 3px; }
+@media (max-width: 520px) {
+  .term-row { flex-direction: column; gap: 0; margin-bottom: .4rem; }
+  .term-label { flex-basis: auto; }
 }
 
 /* ---------- contact ---------- */
@@ -2116,6 +2208,7 @@ kbd {
   .git-log__hash { color: #555 !important; }
   .git-log__date { color: #777 !important; }
   .git-log__msg { color: #111 !important; }
+  .git-log__detail { color: #555 !important; font-size: 8.5pt !important; margin-top: 1pt !important; }
   .git-log__tag--feat, .git-log__tag--refactor, .git-log__tag--chore, .git-log__tag--init { color: #000 !important; }
 
   .projects__grid { display: block !important; }
