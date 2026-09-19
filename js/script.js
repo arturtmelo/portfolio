@@ -285,7 +285,7 @@ const SHORTCUTS = [
   { keys: ['Esc'], desc: 'fechar modais ou restaurar uma janela maximizada' },
   { keys: ['↑', '↑', '↓', '↓', '←', '→', '←', '→', 'B', 'A'], desc: 'código Konami — no celular, toque em ↑↑↓↓←→←→BA no rodapé' },
   { keys: ['WASD'], alt: 'setas', desc: 'controlar o Snake, no playground' },
-  { keys: ['Tab'], desc: 'completar comandos e argumentos no terminal' },
+  { keys: ['Tab'], desc: 'completar comandos e argumentos no terminal (sem o que completar, segue para o próximo campo)' },
   { keys: ['↑', '↓'], desc: 'percorrer o histórico do terminal' },
 ];
 function openShortcutsModal() {
@@ -1622,26 +1622,38 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
   }
 
   /* ---- Tab completes; the arrows walk the history ---- */
+  // Tab completes only when there is something to complete. Otherwise (empty field, no match, already
+  // complete, or the choices were just listed) it returns false and Tab does its normal job of moving
+  // focus on: swallowing every Tab would trap keyboard users inside the field.
+  let listedFor = null; // the text whose choices a Tab has already listed
   function complete() {
+    if (!input.value.trim()) return false; // nothing typed: nothing to complete
     const parts = input.value.split(/\s+/);
     const first = parts[0].toLowerCase();
     const options = parts.length === 1
       ? Object.keys(commands).filter((c) => !THEME_SHORTCUTS.has(c) && c.startsWith(first))
       : parts.length === 2 ? argOptions(first).filter((o) => o.toLowerCase().startsWith(parts[1].toLowerCase())) : [];
-    if (!options.length) return;
+    if (!options.length) return false;
     let common = options[0];
     options.forEach((o) => { while (!o.toLowerCase().startsWith(common.toLowerCase())) common = common.slice(0, -1); });
     const head = parts.length === 1 ? '' : `${parts[0]} `;
     const next = head + common + (options.length === 1 ? ' ' : '');
-    if (options.length > 1 && next === input.value) print(line(chips(options.map((o) => chip(head + o, o))))); // nothing left to add: show the choices
+    if (next === input.value) {
+      if (options.length === 1 || listedFor === next) return false; // nothing more to add, nothing new to show
+      listedFor = next;
+      print(line(chips(options.map((o) => chip(head + o, o))))); // nothing left to add: show the choices
+      return true;
+    }
     input.value = next;
+    listedFor = null;
+    return true;
   }
 
   input.addEventListener('keydown', (e) => {
     if (e.key.length === 1) playClick();
+    if (e.key !== 'Tab') listedFor = null;
     if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      e.preventDefault();
-      complete();
+      if (complete()) e.preventDefault();
     } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && history.length) {
       e.preventDefault();
       if (histPos === -1) draft = input.value;

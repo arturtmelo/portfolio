@@ -144,7 +144,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { scroll-behavior: smooth; overflow-x: hidden; }
+html { scroll-behavior: smooth; overflow-x: hidden; scroll-padding-top: 72px; } /* clearance for the fixed nav: anchors and keyboard focus both stop below it */
 body { overflow-x: hidden; }
 
 body {
@@ -431,8 +431,8 @@ html { color-scheme: dark; }
 }
 
 /* ---------- layout helpers ---------- */
-.section { max-width: 1100px; margin: 0 auto; padding: 9rem 2rem 5rem; position: relative; scroll-margin-top: 88px; }
-.hero { scroll-margin-top: 88px; }
+.section { max-width: 1100px; margin: 0 auto; padding: 9rem 2rem 5rem; position: relative; scroll-margin-top: 16px; }
+.hero { scroll-margin-top: 16px; } /* 16 + the 72 of scroll-padding on html = the 88px the nav needs */
 .section__tag { color: var(--green); font-size: .8rem; letter-spacing: .1em; margin: 0 0 .5rem; }
 .section__title { font-family: var(--font-display); font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0 0 3rem; color: var(--text); }
 
@@ -549,9 +549,11 @@ html { color-scheme: dark; }
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
-  transition: opacity .25s ease, transform .25s ease;
+  /* not shown = not focusable and not read out either, once the fade has finished */
+  visibility: hidden;
+  transition: opacity .25s ease, transform .25s ease, visibility 0s linear .25s;
 }
-.back-to-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.back-to-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; visibility: visible; transition: opacity .25s ease, transform .25s ease, visibility 0s; }
 .back-to-top[hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .back-to-top { transition: opacity .1s linear; }
@@ -1185,6 +1187,12 @@ html { color-scheme: dark; }
   padding: .8rem 1.4rem;
   border-top: 1px solid var(--border);
   background: #0a0e17;
+  transition: border-color .2s ease, background-color .2s ease;
+}
+/* the field itself has no outline: the whole prompt row shows that it has focus */
+.terminal-input-row:focus-within {
+  border-top-color: var(--green);
+  background-image: linear-gradient(rgba(var(--green-rgb), .07), rgba(var(--green-rgb), .07));
 }
 .terminal-input-row input {
   flex: 1;
@@ -2133,6 +2141,46 @@ kbd {
   .konami-pad__slot { transition: none; }
   .konami-pad__slot.is-next, .konami-pad__seq.is-wrong { animation: none; }
   .konami-pad__key { transition: none; }
+}
+
+/* =========================================================
+   FORCED COLORS (Windows High Contrast): the system palette replaces every colour the page sets,
+   including the fill behind masked icons and the background that marks a selected item. So icons
+   are refilled with a system colour, selected items use Highlight, and pure decoration goes.
+   ========================================================= */
+@media (forced-colors: active) {
+  #matrix-canvas, .scanlines, .cursor-dot, .cursor-ring, .hero__bg-glow { display: none; }
+  .ui-icon, .term-icon, .whatsapp-btn__icon, .fact-card__icon, .game-switcher__icon,
+  .snake__food-icon, .terminal-window__restore-icon {
+    forced-color-adjust: none;
+    background: CanvasText;
+    filter: none;
+    animation: none;
+  }
+  .dot { forced-color-adjust: none; background: CanvasText; }
+  .nav__links a.active { text-decoration: underline; text-underline-offset: 6px; }
+  .projects__filter.active, .palette__result.active, .game-switcher__tab.is-active,
+  .maze__size[aria-pressed="true"], .maze__actions .btn.is-next, .konami-pad__slot.is-done {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: HighlightText;
+  }
+  .game-switcher__tab.is-active .game-switcher__icon,
+  .palette__result.active .ui-icon { background: HighlightText; }
+  .side-link .ui-icon, .side-link:hover .ui-icon, .side-link:focus-visible .ui-icon { background: CanvasText; }
+  /* typing race: the real input is an invisible overlay (transparent text), which the system palette would
+     make visible on top of the snippet; and right / wrong / still to type must not depend on colour alone */
+  .typing__input { forced-color-adjust: none; color: transparent; caret-color: transparent; }
+  .typing__text span { opacity: .6; }
+  .typing__text .char--correct, .typing__text .char--current { opacity: 1; }
+  .typing__text .char--wrong {
+    opacity: 1;
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    text-decoration: underline wavy;
+  }
 }
 
 /* =========================================================
