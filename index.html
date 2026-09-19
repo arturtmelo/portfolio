@@ -481,7 +481,7 @@
         <div class="game-switcher__tabs">
           <button type="button" class="game-switcher__tab" data-game="snake" aria-label="Snake"><span class="game-switcher__icon game-switcher__icon--snake" aria-hidden="true"></span></button>
           <button type="button" class="game-switcher__tab" data-game="typing" aria-label="Corrida de digitação"><span class="game-switcher__icon game-switcher__icon--keyboard" aria-hidden="true"></span></button>
-          <button type="button" class="game-switcher__tab" data-game="bug" aria-label="Caça-bug: ache a linha com o bug"><span class="game-switcher__icon game-switcher__icon--bug" aria-hidden="true"></span></button>
+          <button type="button" class="game-switcher__tab" data-game="maze" aria-label="Labirinto de palavras"><span class="game-switcher__icon game-switcher__icon--maze" aria-hidden="true"></span></button>
         </div>
       </div>
 
@@ -533,21 +533,27 @@
         </div>
       </div>
 
-      <div class="game-page" data-game-page="bug" hidden>
-        <div class="bug">
-          <div class="bug__top">
-            <span>rodada: <b id="bugRound" class="tabular">1/6</b></span>
-            <span>acertos: <b id="bugScore" class="tabular">0</b></span>
-            <span>recorde: <b id="bugBest" class="tabular">--</b></span>
+      <div class="game-page" data-game-page="maze" hidden>
+        <div class="maze">
+          <div class="maze__top">
+            <span>palavras: <b id="mazeSolved" class="tabular">0</b></span>
+            <span>tempo: <b id="mazeTime" class="tabular">0:00</b></span>
           </div>
-          <p class="bug__goal" id="bugGoal"></p>
-          <div class="bug__code-wrap">
-            <span class="bug__lang" id="bugLang"></span>
-            <div class="bug__code" id="bugCode" role="group" aria-label="trecho de código — escolha a linha que tem o bug"></div>
+          <p class="maze__clue" id="mazeClue"></p>
+          <div class="maze__slots" id="mazeSlots" aria-hidden="true"></div>
+          <svg id="mazeBoard" class="maze__board" role="group" tabindex="0" aria-label="labirinto de letras: arraste, ou use as setas do teclado, passando por todas as casas até a última letra" xmlns="http://www.w3.org/2000/svg"></svg>
+          <p class="maze__msg" id="mazeMsg" role="status" aria-live="polite"></p>
+          <div class="maze__actions">
+            <button type="button" id="mazeReset" class="btn btn--ghost">recomeçar</button>
+            <button type="button" id="mazeHint" class="btn btn--ghost">dica</button>
+            <button type="button" id="mazeNew" class="btn btn--ghost">outra palavra</button>
           </div>
-          <div class="bug__feedback" id="bugFeedback" aria-live="polite" hidden></div>
-          <button type="button" id="bugNext" class="btn btn--ghost" hidden>próxima</button>
-          <p class="bug__hint" id="bugHint">uma das linhas tem um bug — escolha qual.</p>
+          <p class="maze__hint">comece na casa verde e arraste por todas as casas, sem atravessar as paredes, até fechar a palavra na casa tracejada.</p>
+          <p class="maze__legend">
+            <span><i class="maze__key maze__key--start"></i>início</span>
+            <span><i class="maze__key maze__key--end"></i>fim</span>
+            <span><i class="maze__key maze__key--wall"></i>parede</span>
+          </p>
         </div>
       </div>
     </div>

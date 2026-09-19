@@ -157,7 +157,7 @@ const ACHIEVEMENTS = {
   arcade: { label: 'Modo Arcade', desc: 'Comeu a primeira maçã no Snake, lá no playground.' },
   hacker: { label: 'Script Kiddie', desc: 'Tentou invadir o mainframe com o comando hack.' },
   speedtyper: { label: 'Dedos de Fibra Óptica', desc: 'Bateu 60+ WPM na corrida de digitação.' },
-  bughunt: { label: 'Caça-Bugs', desc: 'Achou 5 dos 6 bugs no Caça-Bug, lá no playground.' },
+  maze: { label: 'Rato de Labirinto', desc: 'Resolveu 3 labirintos de palavras no playground.' },
 };
 
 // UI icons are masked SVGs filled with the site palette (see .ui-icon in the CSS)
@@ -2059,232 +2059,64 @@ document.addEventListener('keydown', (e) => {
   render();
 })();
 
-/* ---------- playground: bug hunt — spot the buggy line ---------- */
-(function bugHunt() {
-  const codeEl = document.getElementById('bugCode');
-  if (!codeEl) return;
-  const langEl = document.getElementById('bugLang');
-  const goalEl = document.getElementById('bugGoal');
-  const roundEl = document.getElementById('bugRound');
-  const scoreEl = document.getElementById('bugScore');
-  const bestEl = document.getElementById('bugBest');
-  const feedbackEl = document.getElementById('bugFeedback');
-  const nextBtn = document.getElementById('bugNext');
-  const hintEl = document.getElementById('bugHint');
-  const wrapEl = codeEl.closest('.bug__code-wrap');
+/* ---------- playground: word maze — drag through every square, ending on the last letter ---------- */
+(function wordMaze() {
+  const board = document.getElementById('mazeBoard');
+  if (!board) return;
+  const clueEl = document.getElementById('mazeClue');
+  const slotsEl = document.getElementById('mazeSlots');
+  const msgEl = document.getElementById('mazeMsg');
+  const solvedEl = document.getElementById('mazeSolved');
+  const timeEl = document.getElementById('mazeTime');
+  const resetBtn = document.getElementById('mazeReset');
+  const hintBtn = document.getElementById('mazeHint');
+  const newBtn = document.getElementById('mazeNew');
 
-  const ROUNDS = 6;
-  const PASS = 5; // this many right unlocks the achievement
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = 100;   // one square, in viewBox units
+  const PASS = 3;  // words solved (in total) that unlock the achievement
 
-  // Real mistakes from the stack this portfolio is about (C#/.NET, JS/React, SQL, Python, Java, CI).
-  // bug: the 1-based line(s) that hold it — any of them counts. why: shown after the answer; `x` becomes <code>.
-  const PUZZLES = [
-    {
-      lang: 'C#', goal: 'devolver a média das notas, com casas decimais.',
-      code: [
-        'double Media(int[] notas)',
-        '{',
-        '    int soma = 0;',
-        '    foreach (var n in notas)',
-        '        soma += n;',
-        '    return soma / notas.Length;',
-        '}',
-      ],
-      bug: [6],
-      why: 'int dividido por int é divisão inteira: 7 / 2 dá 3, não 3,5. Converta um dos lados: `(double)soma / notas.Length`.',
-    },
-    {
-      lang: 'C#', goal: 'remover do carrinho os itens com quantidade zero.',
-      code: [
-        'void Limpar(List<Item> carrinho)',
-        '{',
-        '    foreach (var item in carrinho)',
-        '    {',
-        '        if (item.Quantidade == 0)',
-        '            carrinho.Remove(item);',
-        '    }',
-        '}',
-      ],
-      bug: [6],
-      why: 'Alterar a lista enquanto o `foreach` a percorre lança InvalidOperationException. Use `carrinho.RemoveAll(i => i.Quantidade == 0)`.',
-    },
-    {
-      lang: 'C#', goal: 'buscar o usuário pelo nome digitado no formulário.',
-      code: [
-        'public Usuario Buscar(string nome)',
-        '{',
-        '    var sql = "SELECT * FROM Usuarios "',
-        `      + "WHERE Nome = '" + nome + "'";`,
-        '    return _db.Query<Usuario>(sql);',
-        '}',
-      ],
-      bug: [4],
-      why: 'Concatenar o que o usuário digitou dentro do SQL abre a porta para SQL injection. Use parâmetro: `WHERE Nome = @nome`.',
-    },
-    {
-      lang: 'JavaScript', goal: 'devolver os 3 últimos itens da lista.',
-      code: [
-        'function ultimos3(lista) {',
-        '  if (lista.length <= 3) return lista;',
-        '  const inicio = lista.length - 3;',
-        '  return lista.slice(inicio + 1);',
-        '}',
-      ],
-      bug: [4],
-      why: '`slice(inicio + 1)` pula um item a mais e devolve só 2. O certo é `lista.slice(inicio)` — ou simplesmente `lista.slice(-3)`.',
-    },
-    {
-      lang: 'JavaScript', goal: 'salvar todos os itens e só então avisar que terminou.',
-      code: [
-        'async function salvarTodos(itens) {',
-        '  itens.forEach(async (item) => {',
-        '    await api.salvar(item);',
-        '  });',
-        "  console.log('tudo salvo!');",
-        '}',
-      ],
-      bug: [2, 3],
-      why: 'O `forEach` ignora a Promise que o callback devolve: o log dispara antes de salvar qualquer coisa. Use `for...of` com `await`, ou `await Promise.all(itens.map(...))`.',
-    },
-    {
-      lang: 'JavaScript', goal: 'imprimir 0, 1 e 2.',
-      code: [
-        'for (var i = 0; i < 3; i++) {',
-        '  setTimeout(() => console.log(i));',
-        '}',
-      ],
-      bug: [1],
-      why: '`var` tem escopo de função: as três callbacks enxergam o mesmo `i`, que já vale 3 quando rodam — sai 3, 3, 3. Com `let i` cada volta ganha o seu.',
-    },
-    {
-      lang: 'JavaScript', goal: 'converter as strings em inteiros: [10, 10, 10].',
-      code: [
-        "const nums = ['10', '10', '10'];",
-        'const inteiros = nums.map(parseInt);',
-        'console.log(inteiros);',
-      ],
-      bug: [2],
-      why: 'O `map` passa (valor, índice, array) e o `parseInt` usa o índice como base numérica: o resultado é [10, NaN, 2]. Use `nums.map(Number)` ou `n => parseInt(n, 10)`.',
-    },
-    {
-      lang: 'React', goal: 'adicionar um item à lista guardada no estado — a tela deve atualizar.',
-      code: [
-        'function adicionar(item) {',
-        '  itens.push(item);',
-        '  setItens(itens);',
-        '}',
-      ],
-      bug: [2, 3],
-      why: '`push` muda o array original e o `setItens` recebe a mesma referência: para o React nada mudou e a tela não atualiza. Crie um novo array: `setItens([...itens, item])`.',
-    },
-    {
-      lang: 'SQL', goal: 'contar quantos pedidos cada cliente fez.',
-      code: [
-        'SELECT c.nome, COUNT(*) AS pedidos',
-        'FROM clientes c',
-        'JOIN pedidos p ON p.id = c.id',
-        'GROUP BY c.nome;',
-      ],
-      bug: [3],
-      why: 'O JOIN compara o id do pedido com o id do cliente. A chave estrangeira é outra: `p.cliente_id = c.id`.',
-    },
-    {
-      lang: 'SQL', goal: 'listar quem nunca fez login.',
-      code: [
-        'SELECT nome',
-        'FROM usuarios',
-        'WHERE ultimo_login = NULL',
-        'ORDER BY nome;',
-      ],
-      bug: [3],
-      why: 'Comparar com NULL usando `=` nunca dá verdadeiro (o resultado é UNKNOWN), então a consulta volta vazia. O certo é `IS NULL`.',
-    },
-    {
-      lang: 'Python', goal: 'cada chamada sem lista deve começar com uma lista nova e vazia.',
-      code: [
-        'def adicionar(item, lista=[]):',
-        '    lista.append(item)',
-        '    return lista',
-        '',
-        'adicionar(1)  # [1]',
-        'adicionar(2)  # deveria ser [2]',
-      ],
-      bug: [1],
-      why: 'O valor padrão `[]` é criado uma única vez e reaproveitado entre as chamadas — o segundo resultado sai [1, 2]. Use `lista=None` e crie a lista dentro da função.',
-    },
-    {
-      lang: 'Python', goal: 'devolver o item do meio da lista ordenada (tamanho ímpar).',
-      code: [
-        'def elemento_do_meio(itens):',
-        '    ordenados = sorted(itens)',
-        '    meio = len(ordenados) / 2',
-        '    return ordenados[meio]',
-      ],
-      bug: [3],
-      why: 'No Python 3, `/` devolve float (3 / 2 = 1.5) e índice de lista precisa ser inteiro: dá TypeError. Use `//`, a divisão inteira.',
-    },
-    {
-      lang: 'Java', goal: 'dizer se o perfil é "admin".',
-      code: [
-        'boolean ehAdmin(String perfil) {',
-        '    if (perfil == "admin") {',
-        '        return true;',
-        '    }',
-        '    return false;',
-        '}',
-      ],
-      bug: [2],
-      why: 'Em Java o `==` compara referências, não o texto: pode dar falso mesmo com o mesmo conteúdo. Use `"admin".equals(perfil)`.',
-    },
-    {
-      lang: 'YAML (CI)', goal: 'rodar os testes do projeto .NET no pipeline.',
-      code: [
-        'steps:',
-        '  - uses: actions/checkout@v4',
-        '  - name: Rodar testes',
-        '  run: dotnet test',
-      ],
-      bug: [4],
-      why: 'Em YAML a indentação é a estrutura: o `run` precisa ficar alinhado com o `name` (4 espaços) para pertencer ao mesmo passo. Assim o pipeline nem carrega.',
-    },
+  // Words about the world this portfolio lives in, grouped by length: a word of n letters fills a
+  // grid of exactly n squares. Two words solved moves the game up to the next (longer) group.
+  const TIERS = [
+    { shape: [2, 3], words: [
+      ['DEPLOY', 'colocar a aplicação no ar, para todo mundo usar'],
+      ['PYTHON', 'linguagem de programação com nome de cobra'],
+      ['DOCKER', 'a baleia que empacota aplicações em containers'],
+      ['GITHUB', 'onde o código do Artur mora'],
+      ['SCRIPT', 'roteiro de comandos que o computador executa sozinho'],
+    ] },
+    { shape: [2, 4], words: [
+      ['PIPELINE', 'a esteira do CI/CD: build, testes e entrega, tudo automático'],
+      ['TERMINAL', 'a janela preta onde se digitam comandos'],
+      ['SERVIDOR', 'o computador que responde aos pedidos da internet'],
+      ['VARIAVEL', 'guarda um valor debaixo de um nome'],
+      ['RECURSAO', 'quando uma função chama a si mesma'],
+      ['COMPILAR', 'transformar o código-fonte em programa executável'],
+    ] },
+    { shape: [3, 3], words: [
+      ['FRAMEWORK', 'estrutura pronta que acelera a construção de apps, como React ou .NET'],
+      ['ALGORITMO', 'passo a passo para resolver um problema'],
+      ['PORTFOLIO', 'a vitrine de um desenvolvedor — como este site'],
+      ['CONTAINER', 'caixa isolada que leva a aplicação e tudo de que ela precisa'],
+      ['INTERFACE', 'a parte do sistema que a pessoa vê e toca'],
+      ['NAVEGADOR', 'o programa que abre este site: Chrome, Firefox, Edge...'],
+    ] },
+    { shape: [2, 5], words: [
+      ['INTEGRACAO', 'o "I" do CI/CD: juntar o código de todo mundo o tempo todo'],
+      ['COMPUTACAO', 'a ciência que estuda algoritmos, dados e máquinas'],
+      ['ENGENHARIA', 'profissão de quem projeta e constrói, como a de software'],
+    ] },
+    { shape: [3, 4], words: [
+      ['AUTENTICACAO', 'provar quem você é para entrar no sistema'],
+      ['DOCUMENTACAO', 'o texto que explica como usar o código (e que ninguém quer escrever)'],
+      ['ORQUESTRACAO', 'o que o Kubernetes faz: coordenar vários containers'],
+      ['CONFIGURACAO', 'os ajustes que dizem ao sistema como se comportar'],
+    ] },
   ];
 
-  const RATINGS = [
-    [6, 'revisão impecável: nenhum bug passou.'],
-    [5, 'quase perfeito — só um escapou.'],
-    [3, 'bom olho! o time de QA agradece.'],
-    [0, 'bug é traiçoeiro mesmo. quer tentar outra rodada?'],
-  ];
-
-  // a small highlighter: enough colour to read like an editor, not a real parser
-  const KEYWORDS = new Set((
-    'function const let var return if else for foreach while in of async await new void public private static class def ' +
-    'int double string bool boolean true false null None True False and or not is ' +
-    'SELECT FROM WHERE JOIN ON GROUP BY ORDER COUNT AS UPDATE SET INSERT INTO DELETE NULL IS'
-  ).split(' '));
-  const TOKEN = /(\/\/.*|--.*|#.*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\d+(?:\.\d+)?)|([A-Za-z_]\w*)/g;
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  function highlight(line) {
-    let out = '', last = 0, m;
-    TOKEN.lastIndex = 0;
-    while ((m = TOKEN.exec(line))) {
-      out += esc(line.slice(last, m.index));
-      const [tok, comment, str, num] = m;
-      if (comment) out += `<i class="tok-c">${esc(tok)}</i>`;
-      else if (str) out += `<i class="tok-s">${esc(tok)}</i>`;
-      else if (num) out += `<i class="tok-n">${esc(tok)}</i>`;
-      else out += KEYWORDS.has(tok) ? `<i class="tok-k">${esc(tok)}</i>` : esc(tok);
-      last = m.index + tok.length;
-    }
-    return out + esc(line.slice(last));
-  }
-
-  let queue, index, score, mode; // mode: 'asking' | 'answered' | 'done'
-  let rows = [];
-  let best = 0;
-  try { best = Number(localStorage.getItem('artur-bughunt-best')) || 0; } catch (e) {}
-  if (bestEl) bestEl.textContent = best ? `${best}/${ROUNDS}` : '--';
-
+  const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -2293,104 +2125,325 @@ document.addEventListener('keydown', (e) => {
     return arr;
   }
 
-  function newGame() {
-    queue = shuffle([...PUZZLES]).slice(0, ROUNDS);
-    index = 0;
-    score = 0;
-    wrapEl.hidden = false;
-    goalEl.hidden = false;
-    hintEl.hidden = false;
-    showRound();
+  /* ---- generating a maze ----
+     Squares are numbered row by row. A wall is stored as the key of the two squares it separates.
+     1. draw a random route that visits every square once and lay the word's letters along it;
+     2. add walls (never across a step of the route) until that route is the ONLY way through;
+     3. take away any wall that turned out not to be needed, so it is no fuller of walls than it must be. */
+  const key = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+  function neighboursOf(i, rows, cols) {
+    const r = Math.floor(i / cols), c = i % cols, out = [];
+    if (r > 0) out.push(i - cols);
+    if (r < rows - 1) out.push(i + cols);
+    if (c > 0) out.push(i - 1);
+    if (c < cols - 1) out.push(i + 1);
+    return out;
   }
 
-  function showRound() {
-    const p = queue[index];
-    mode = 'asking';
-    roundEl.textContent = `${index + 1}/${ROUNDS}`;
-    scoreEl.textContent = score;
-    goalEl.innerHTML = `<span>objetivo:</span> ${esc(p.goal)}`;
-    langEl.textContent = p.lang;
-    codeEl.innerHTML = '';
-    rows = [];
-    p.code.forEach((text, i) => {
-      const n = i + 1;
-      if (!text.trim()) { // a blank line keeps its number but isn't something to pick
-        const gap = document.createElement('div');
-        gap.className = 'bug__line bug__line--blank';
-        gap.innerHTML = `<span class="bug__num" aria-hidden="true">${n}</span>`;
-        codeEl.appendChild(gap);
-        return;
+  function randomRoute(rows, cols) {
+    const n = rows * cols;
+    const route = [Math.floor(Math.random() * n)];
+    const seen = new Array(n).fill(false);
+    seen[route[0]] = true;
+    let budget = 20000; // some starting squares have no full route at all; don't dig forever
+    (function extend() {
+      if (route.length === n) return true;
+      if (--budget < 0) return false;
+      for (const next of shuffle(neighboursOf(route[route.length - 1], rows, cols).filter((c) => !seen[c]))) {
+        seen[next] = true;
+        route.push(next);
+        if (extend()) return true;
+        route.pop();
+        seen[next] = false;
       }
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'bug__line';
-      row.innerHTML = `<span class="bug__num" aria-hidden="true">${n}</span><span class="bug__src">${highlight(text)}</span>`;
-      row.setAttribute('aria-label', `linha ${n}: ${text.trim()}`);
-      row.addEventListener('click', () => answer(n));
-      rows[n] = row;
-      codeEl.appendChild(row);
-    });
-    feedbackEl.hidden = true;
-    nextBtn.hidden = true;
-    hintEl.hidden = false;
+      return false;
+    })();
+    return route.length === n ? route : null;
   }
 
-  function answer(n) {
-    if (mode !== 'asking') return;
-    mode = 'answered';
-    hintEl.hidden = true; // the question has been answered — the prompt below would only be noise
-    const p = queue[index];
-    const hit = p.bug.includes(n);
-    if (hit) { score++; playEat(); } else playClick();
-    scoreEl.textContent = score;
-
-    rows.forEach((row) => { if (row) row.disabled = true; });
-    p.bug.forEach((b) => rows[b]?.classList.add('is-bug'));
-    if (!hit) rows[n]?.classList.add('is-wrong');
-
-    const where = p.bug.length > 1 ? `nas linhas ${p.bug.join(' e ')}` : `na linha ${p.bug[0]}`;
-    const why = esc(p.why).replace(/`([^`]+)`/g, '<code>$1</code>');
-    feedbackEl.className = `bug__feedback bug__feedback--${hit ? 'ok' : 'miss'}`;
-    feedbackEl.innerHTML = `<p class="bug__verdict">${hit ? 'achou o bug!' : `não foi essa — o bug está ${where}.`}</p><p>${why}</p>`;
-    feedbackEl.hidden = false;
-    nextBtn.textContent = index === ROUNDS - 1 ? 'ver resultado' : 'próxima';
-    nextBtn.hidden = false;
-    nextBtn.focus({ preventScroll: true });
-    nextBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // how many ways are there to visit every square from `start`, counting no further than `limit`
+  function countRoutes(start, rows, cols, walls, limit) {
+    const n = rows * cols;
+    const seen = new Array(n).fill(false);
+    seen[start] = true;
+    let count = 0;
+    (function walk(cur, len) {
+      if (count >= limit) return;
+      if (len === n) { count++; return; }
+      for (const next of neighboursOf(cur, rows, cols)) {
+        if (seen[next] || walls.has(key(cur, next))) continue;
+        seen[next] = true;
+        walk(next, len + 1);
+        seen[next] = false;
+      }
+    })(start, 1);
+    return count;
   }
 
-  function showResult() {
-    mode = 'done';
-    wrapEl.hidden = true;
-    goalEl.hidden = true;
-    hintEl.hidden = true;
-    roundEl.textContent = 'fim';
-    const rating = RATINGS.find(([min]) => score >= min)[1];
-    let record = '';
-    if (score > best) {
-      best = score;
-      bestEl.textContent = `${best}/${ROUNDS}`;
-      try { localStorage.setItem('artur-bughunt-best', String(best)); } catch (e) {}
-      record = '<p class="bug__verdict">novo recorde!</p>';
+  function makePuzzle(word, clue, rows, cols) {
+    const n = rows * cols;
+    let route = null;
+    while (!route) route = randomRoute(rows, cols);
+    const start = route[0];
+    const steps = new Set();
+    for (let i = 0; i < n - 1; i++) steps.add(key(route[i], route[i + 1]));
+
+    const candidates = [];
+    for (let a = 0; a < n; a++) {
+      for (const b of neighboursOf(a, rows, cols)) if (a < b && !steps.has(key(a, b))) candidates.push(key(a, b));
     }
-    feedbackEl.className = 'bug__feedback bug__result';
-    feedbackEl.innerHTML = `<p class="bug__result-score">${score}<span>/${ROUNDS}</span></p><p>${rating}</p>${record}`;
-    feedbackEl.hidden = false;
-    nextBtn.textContent = 'jogar de novo';
-    nextBtn.hidden = false;
-    nextBtn.focus({ preventScroll: true });
-    if (score >= PASS) unlockAchievement('bughunt');
+    const walls = new Set();
+    for (const k of shuffle(candidates)) {
+      walls.add(k);
+      if (countRoutes(start, rows, cols, walls, 2) === 1) break;
+    }
+    for (const k of shuffle([...walls])) {
+      walls.delete(k);
+      if (countRoutes(start, rows, cols, walls, 2) !== 1) walls.add(k);
+    }
+
+    const letters = [];
+    route.forEach((cell, i) => { letters[cell] = word[i]; });
+    return { word, clue, rows, cols, letters, walls, route, start, end: route[n - 1] };
   }
 
-  nextBtn.addEventListener('click', () => {
+  /* ---- the game ---- */
+  let puzzle, path, solved, cells = [], slotEls = [], trail;
+  let solvedTotal = 0, sessionSolved = 0, lastWord = '';
+  let startedAt = 0, timerId = 0, hintTimer = 0;
+  try { solvedTotal = Number(localStorage.getItem('artur-maze-solved')) || 0; } catch (e) {}
+  solvedEl.textContent = solvedTotal;
+
+  function svgEl(name, attrs, parent) {
+    const node = document.createElementNS(NS, name);
+    for (const k in attrs) node.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  function build() {
+    const { rows, cols } = puzzle;
+    board.replaceChildren();
+    board.setAttribute('viewBox', `0 0 ${cols * S} ${rows * S}`);
+    board.style.setProperty('--cols', cols);
+
+    const defs = svgEl('defs', {}, board);
+    const grad = svgEl('linearGradient', { id: 'mazeTrail', gradientUnits: 'userSpaceOnUse', x1: 0, y1: 0, x2: cols * S, y2: rows * S }, defs);
+    svgEl('stop', { offset: '0' }, grad).style.setProperty('stop-color', 'var(--green)');
+    svgEl('stop', { offset: '1' }, grad).style.setProperty('stop-color', 'var(--cyan)');
+
+    cells = [];
+    for (let i = 0; i < rows * cols; i++) {
+      cells.push(svgEl('rect', { x: (i % cols) * S + 4, y: Math.floor(i / cols) * S + 4, width: S - 8, height: S - 8, rx: 14, class: 'maze__cell' }, board));
+    }
+    cells[puzzle.start].classList.add('is-start');
+    cells[puzzle.end].classList.add('is-end');
+
+    trail = svgEl('polyline', { class: 'maze__trail' }, board);
+
+    puzzle.walls.forEach((k) => {
+      const [a, b] = k.split('-').map(Number); // a < b: b is the square to the right of a, or the one below it
+      const r = Math.floor(a / cols), c = a % cols;
+      const attrs = b === a + 1
+        ? { x1: (c + 1) * S, y1: r * S + 8, x2: (c + 1) * S, y2: (r + 1) * S - 8 }
+        : { x1: c * S + 8, y1: (r + 1) * S, x2: (c + 1) * S - 8, y2: (r + 1) * S };
+      svgEl('line', { ...attrs, class: 'maze__wall', 'data-a': a, 'data-b': b }, board);
+    });
+
+    puzzle.letters.forEach((ch, i) => {
+      const t = svgEl('text', { x: (i % cols) * S + S / 2, y: Math.floor(i / cols) * S + S / 2, dy: '.35em', class: 'maze__letter', 'aria-hidden': 'true' }, board);
+      t.textContent = ch;
+    });
+
+    slotsEl.replaceChildren();
+    slotEls = [...puzzle.word].map(() => {
+      const s = document.createElement('span');
+      s.className = 'maze__slot';
+      slotsEl.appendChild(s);
+      return s;
+    });
+    clueEl.innerHTML = `<span>dica:</span> ${esc(puzzle.clue)}`;
+  }
+
+  function paint() {
+    const { cols } = puzzle;
+    const head = path[path.length - 1];
+    cells.forEach((c, i) => {
+      c.classList.toggle('is-on', path.includes(i));
+      c.classList.toggle('is-head', i === head);
+    });
+    trail.setAttribute('points', path.map((c) => `${(c % cols) * S + S / 2},${Math.floor(c / cols) * S + S / 2}`).join(' '));
+    slotEls.forEach((s, i) => {
+      const ch = i < path.length ? puzzle.letters[path[i]] : '';
+      s.textContent = ch;
+      s.classList.toggle('is-filled', !!ch);
+    });
+    hintBtn.disabled = solved;
+    resetBtn.disabled = solved || path.length === 1;
+  }
+
+  function say(text, kind) {
+    msgEl.className = `maze__msg${kind ? ` maze__msg--${kind}` : ''}`;
+    msgEl.innerHTML = text;
+  }
+
+  function startTimer() {
+    if (timerId || solved) return;
+    startedAt = Date.now();
+    timerId = setInterval(() => { timeEl.textContent = fmtTime((Date.now() - startedAt) / 1000); }, 500);
+  }
+  function stopTimer() {
+    clearInterval(timerId);
+    timerId = 0;
+  }
+
+  function newPuzzle() {
+    stopTimer();
+    clearTimeout(hintTimer);
+    const tier = TIERS[Math.min(Math.floor(sessionSolved / 2), TIERS.length - 1)];
+    let entry;
+    do { entry = tier.words[Math.floor(Math.random() * tier.words.length)]; } while (entry[0] === lastWord && tier.words.length > 1);
+    lastWord = entry[0];
+    const [r, c] = tier.shape;
+    const turned = Math.random() < 0.5; // half the time lay it on its side
+    puzzle = makePuzzle(entry[0], entry[1], turned ? c : r, turned ? r : c);
+    path = [puzzle.start];
+    solved = false;
+    board.classList.remove('is-solved');
+    timeEl.textContent = '0:00';
+    newBtn.textContent = 'outra palavra';
+    newBtn.classList.remove('is-next');
+    say('');
+    build();
+    paint();
+  }
+
+  function win() {
+    solved = true;
+    stopTimer();
+    const secs = (Date.now() - startedAt) / 1000;
+    board.classList.add('is-solved');
+    solvedTotal++;
+    sessionSolved++;
+    solvedEl.textContent = solvedTotal;
+    try { localStorage.setItem('artur-maze-solved', String(solvedTotal)); } catch (e) {}
+    playEat();
+    say(`isso aí! era <b>${puzzle.word}</b> — ${fmtTime(secs)}`, 'ok');
+    newBtn.textContent = 'próxima palavra';
+    newBtn.classList.add('is-next');
+    paint();
+    if (solvedTotal >= PASS) unlockAchievement('maze');
+  }
+
+  // One move. Stepping onto the square just behind the head takes the last step back; pressing on an
+  // earlier square of the trail (allowRewind) cuts the trail back to it.
+  function step(cell, allowRewind) {
+    const head = path[path.length - 1];
+    if (solved || cell === head) return;
+    const at = path.indexOf(cell);
+    if (at !== -1) {
+      if (at === path.length - 2) path.pop();
+      else if (allowRewind) path.length = at + 1;
+      else return;
+    } else if (neighboursOf(head, puzzle.rows, puzzle.cols).includes(cell) && !puzzle.walls.has(key(head, cell))) {
+      path.push(cell);
+    } else {
+      return;
+    }
+    startTimer();
     playClick();
-    if (mode === 'done') { newGame(); return; }
-    if (mode !== 'answered') return;
-    index++;
-    if (index < ROUNDS) showRound(); else showResult();
+    say('');
+    paint();
+    if (path.length === puzzle.rows * puzzle.cols) {
+      if (path.map((c) => puzzle.letters[c]).join('') === puzzle.word) win();
+      else say('essa rota não forma a palavra — desfaça um pedaço e tente outro caminho.', 'warn');
+    }
+  }
+
+  /* ---- pointer: press on the trail, drag over the squares ---- */
+  function cellAt(clientX, clientY) {
+    const r = board.getBoundingClientRect();
+    const fx = ((clientX - r.left) / r.width) * puzzle.cols;
+    const fy = ((clientY - r.top) / r.height) * puzzle.rows;
+    const col = Math.floor(fx), row = Math.floor(fy);
+    if (col < 0 || col >= puzzle.cols || row < 0 || row >= puzzle.rows) return -1;
+    const ix = fx - col, iy = fy - row;
+    if (ix < 0.14 || ix > 0.86 || iy < 0.14 || iy > 0.86) return -1; // too near an edge to tell which square is meant
+    return row * puzzle.cols + col;
+  }
+
+  let dragging = false, lastX = 0, lastY = 0;
+  board.addEventListener('pointerdown', (e) => {
+    if (solved || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const cell = cellAt(e.clientX, e.clientY);
+    if (cell < 0) return;
+    e.preventDefault();
+    board.focus({ preventScroll: true });
+    board.setPointerCapture(e.pointerId);
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    step(cell, true);
+  });
+  board.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    // walk along the way in small strides so a quick swipe can't hop over a square
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    const stride = (board.getBoundingClientRect().width / puzzle.cols) * 0.25;
+    const strides = Math.max(1, Math.ceil(Math.hypot(dx, dy) / stride));
+    for (let i = 1; i <= strides; i++) {
+      const cell = cellAt(lastX + (dx * i) / strides, lastY + (dy * i) / strides);
+      if (cell >= 0) step(cell, false);
+    }
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  const letGo = () => { dragging = false; };
+  board.addEventListener('pointerup', letGo);
+  board.addEventListener('pointercancel', letGo);
+  board.addEventListener('lostpointercapture', letGo);
+
+  /* ---- keyboard: arrows walk the trail, Backspace takes a step back, Esc starts over ---- */
+  board.addEventListener('keydown', (e) => {
+    if (solved) return;
+    const head = path[path.length - 1];
+    const { rows, cols } = puzzle;
+    let target = null;
+    if (e.key === 'ArrowUp' && head >= cols) target = head - cols;
+    else if (e.key === 'ArrowDown' && head < (rows - 1) * cols) target = head + cols;
+    else if (e.key === 'ArrowLeft' && head % cols > 0) target = head - 1;
+    else if (e.key === 'ArrowRight' && head % cols < cols - 1) target = head + 1;
+    if (target !== null) { e.preventDefault(); step(target, false); return; }
+    if (e.key === 'Backspace' && path.length > 1) { e.preventDefault(); step(path[path.length - 2], false); }
+    else if (e.key === 'Escape' && path.length > 1) { e.stopPropagation(); reset(); }
   });
 
-  newGame();
+  function reset() {
+    if (solved) return;
+    path = [puzzle.start];
+    say('');
+    paint();
+  }
+  resetBtn.addEventListener('click', () => { playClick(); reset(); });
+
+  // shows the next square of the way through; a wrong stretch of the trail is taken back first
+  hintBtn.addEventListener('click', () => {
+    if (solved) return;
+    playClick();
+    let k = 0;
+    while (k < path.length && path[k] === puzzle.route[k]) k++;
+    path.length = k;
+    paint();
+    startTimer();
+    const next = cells[puzzle.route[k]];
+    next.classList.add('is-hint');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => next.classList.remove('is-hint'), 1800);
+  });
+
+  newBtn.addEventListener('click', () => { playClick(); newPuzzle(); });
+
+  newPuzzle();
 })();
 
 /* ---------- playground: switcher between the three games sharing one window ---------- */
@@ -2401,8 +2454,8 @@ document.addEventListener('keydown', (e) => {
   const titleEl = document.getElementById('playgroundTitle');
   const pages = [...win.querySelectorAll('.game-page')];
   const tabs = [...win.querySelectorAll('.game-switcher__tab')];
-  const GAMES = ['snake', 'typing', 'bug'];
-  const TITLES = { snake: 'snake.js', typing: 'typing.js', bug: 'cacabug.js' };
+  const GAMES = ['snake', 'typing', 'maze'];
+  const TITLES = { snake: 'snake.js', typing: 'typing.js', maze: 'labirinto.js' };
   let index = 0;
 
   function show(i) {
