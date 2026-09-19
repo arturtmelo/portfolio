@@ -60,6 +60,54 @@ function applyTheme(name) {
   if (saved && THEMES[saved]) applyTheme(saved);
 })();
 
+/* ---------- performance helpers ---------- */
+
+// The canvases read theme colors every frame; getComputedStyle() several times
+// per frame at 60fps is needless style work, since the theme only changes on an
+// explicit switch. Cache the reads and drop the cache when data-theme changes.
+let themeVarCache = {};
+const themeChangeListeners = [];
+function getThemeVar(name, fallback) {
+  if (!(name in themeVarCache)) {
+    themeVarCache[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  return themeVarCache[name] || fallback;
+}
+function onThemeChange(fn) { themeChangeListeners.push(fn); }
+new MutationObserver(() => {
+  themeVarCache = {};
+  themeChangeListeners.forEach((fn) => fn());
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+// requestAnimationFrame loop that idles while its element is scrolled out of
+// view (or the tab is hidden) and resumes on its own when it comes back.
+// `minIntervalMs` caps the redraw rate for purely decorative animation.
+function visibleLoop(el, step, minIntervalMs = 0) {
+  let onScreen = true;
+  let rafId = 0;
+  let lastRun = 0;
+  function frame(t) {
+    rafId = 0;
+    if (!onScreen || document.hidden) return;
+    if (t - lastRun >= minIntervalMs) {
+      lastRun = t;
+      step(t);
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+  function kick() {
+    if (!rafId && onScreen && !document.hidden) rafId = requestAnimationFrame(frame);
+  }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      onScreen = entries[entries.length - 1].isIntersecting;
+      kick();
+    }).observe(el);
+  }
+  document.addEventListener('visibilitychange', kick);
+  kick();
+}
+
 /* ---------- sound (synthesized, no audio files needed) ---------- */
 let audioCtx = null;
 let soundEnabled = true;
@@ -284,19 +332,23 @@ function closeShortcutsModal() {
   const ring = document.getElementById('cursorRing');
   if (!dot || !ring) return;
   let mx = 0, my = 0, rx = 0, ry = 0;
+  let rafId = 0;
 
-  window.addEventListener('mousemove', (e) => {
-    mx = e.clientX; my = e.clientY;
-    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
-  });
-
+  // The ring eases toward the pointer. It only needs frames while it's still
+  // catching up — an always-on loop kept the page waking every frame even
+  // with a still mouse (or no mouse at all, on touch devices).
   function loop() {
     rx += (mx - rx) * 0.15;
     ry += (my - ry) * 0.15;
     ring.style.transform = `translate(${rx}px, ${ry}px) translate(-50%,-50%)`;
-    requestAnimationFrame(loop);
+    rafId = (Math.abs(mx - rx) > 0.1 || Math.abs(my - ry) > 0.1) ? requestAnimationFrame(loop) : 0;
   }
-  loop();
+
+  window.addEventListener('mousemove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
+    if (!rafId) rafId = requestAnimationFrame(loop);
+  });
 
   const HOVER_SELECTOR = 'a, button, input, select, .project-card, .fact-card, .palette__result';
   document.addEventListener('mouseover', (e) => {
@@ -328,9 +380,10 @@ function closeShortcutsModal() {
   const chars = 'アイウエオカキクケコサシスセソ01アルツールデコード{}<>/;#$%&*ARTUR'.split('');
 
   function readAccent() {
-    accent = getComputedStyle(document.documentElement).getPropertyValue('--green').trim() || '#39ff8c';
+    accent = getThemeVar('--green', '#39ff8c');
   }
   readAccent();
+  onThemeChange(readAccent); // repaint color the moment the theme switches
 
   function resize() {
     w = canvas.width = window.innerWidth;
@@ -341,24 +394,28 @@ function closeShortcutsModal() {
   window.addEventListener('resize', resize);
   resize();
 
+  // Runs at ~30fps instead of once per display refresh: the full-viewport fade
+  // fill is the expensive part, and it was being repeated 60-144x a second (so
+  // the rain also ran faster on high-refresh screens). Each tick now steps two
+  // rows and stamps both, with the fade strength doubled to match, so the speed
+  // and trail length look the same as before at 60Hz.
+  const TICK_MS = 30;
+  const STEPS_PER_TICK = 2;
   function draw() {
-    ctx.fillStyle = 'rgba(5,6,10,0.06)';
+    ctx.fillStyle = 'rgba(5,6,10,0.117)';
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = accent;
     ctx.font = '14px monospace';
     for (let i = 0; i < drops.length; i++) {
-      const text = chars[Math.floor(Math.random() * chars.length)];
-      ctx.fillText(text, i * 16, drops[i] * 16);
-      if (drops[i] * 16 > h && Math.random() > 0.975) drops[i] = 0;
-      drops[i]++;
+      for (let s = 0; s < STEPS_PER_TICK; s++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillText(text, i * 16, drops[i] * 16);
+        if (drops[i] * 16 > h && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
     }
-    requestAnimationFrame(draw);
   }
-  draw();
-
-  // repaint color instantly whenever the theme changes (polled cheaply on interval,
-  // avoids wiring a bespoke event through every theme-switch call site)
-  setInterval(readAccent, 800);
+  visibleLoop(canvas, draw, TICK_MS);
 })();
 
 /* ---------- typewriter roles ---------- */
@@ -690,7 +747,7 @@ document.addEventListener('keydown', (e) => {
   ];
 
   function themeColor(varName, fallback) {
-    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback;
+    return getThemeVar(varName, fallback);
   }
   function hexToRgb(hex) {
     hex = hex.replace('#', '');
@@ -820,22 +877,29 @@ document.addEventListener('keydown', (e) => {
     });
   }
 
+  // with reduced motion there's no animation loop, so hover/resize must redraw by hand
+  const redrawIfStatic = () => { if (reduceMotion) draw(0); };
+  window.addEventListener('resize', redrawIfStatic);
+
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     hovered = findNodeAt(e.clientX - rect.left, e.clientY - rect.top);
     canvas.style.cursor = hovered ? 'pointer' : 'default';
+    redrawIfStatic();
   });
-  canvas.addEventListener('mouseleave', () => { hovered = null; });
+  canvas.addEventListener('mouseleave', () => { hovered = null; redrawIfStatic(); });
   canvas.addEventListener('touchstart', (e) => {
     const rect = canvas.getBoundingClientRect();
     const t0 = e.touches[0];
     hovered = findNodeAt(t0.clientX - rect.left, t0.clientY - rect.top);
+    redrawIfStatic();
   }, { passive: true });
+  onThemeChange(redrawIfStatic);
 
   if (reduceMotion) {
     draw(0);
   } else {
-    (function loop(t) { draw(t); requestAnimationFrame(loop); })(0);
+    visibleLoop(canvas, draw, 30); // idles offscreen; a gentle halo pulse doesn't need 60fps
   }
 })();
 
@@ -1216,7 +1280,7 @@ document.addEventListener('keydown', (e) => {
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
   function themeColor(varName, fallback) {
-    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback;
+    return getThemeVar(varName, fallback);
   }
 
   function hexToRgb(hex) {
@@ -1462,11 +1526,11 @@ document.addEventListener('keydown', (e) => {
 
   // a continuous render loop keeps the glow/pulse effects alive between
   // movement ticks (and while idle, before the first game starts)
+  // (idles while the canvas is offscreen or its game tab isn't the active one)
   if (!reduceMotion) {
-    (function animationLoop() {
-      draw(isGameOver);
-      requestAnimationFrame(animationLoop);
-    })();
+    // ~30fps is plenty for the glow/pulse, and the per-segment shadowBlur is
+    // the costly part of every frame
+    visibleLoop(canvas, () => draw(isGameOver), 30);
   }
 })();
 
