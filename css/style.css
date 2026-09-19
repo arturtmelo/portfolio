@@ -1745,7 +1745,8 @@ kbd {
   max-width: 460px;
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: .4rem 1rem;
   font-size: .85rem;
   color: var(--muted);
 }
@@ -1787,6 +1788,7 @@ kbd {
 .maze__board:focus-visible { outline: 2px solid var(--green); outline-offset: 6px; border-radius: 12px; }
 @media (max-width: 480px) {
   .maze { padding: 1rem .9rem 1.2rem; }
+  .maze__top { font-size: .78rem; gap: .4rem .8rem; justify-content: center; }
   .maze__board { max-width: calc(var(--cols, 3) * 84px); }
 }
 
@@ -1796,18 +1798,36 @@ kbd {
   stroke-width: 2;
   transition: fill .15s ease, stroke .15s ease;
 }
+/* a hole: a place where a square isn't, drawn as a dotted outline you can see is not for stepping on */
+.maze__void {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-dasharray: 1 9;
+  stroke-linecap: round;
+  opacity: .45;
+  pointer-events: none;
+}
 .maze__cell.is-on { fill: rgba(var(--green-rgb), .1); stroke: rgba(var(--green-rgb), .5); }
 .maze__cell.is-start { stroke: var(--green); stroke-width: 4; }
-.maze__cell.is-end { stroke: var(--cyan); stroke-width: 4; stroke-dasharray: 10 7; }
+.maze__cell.is-end { stroke: var(--cyan); stroke-width: 4; stroke-dasharray: 10 7; animation: mazeDash 1.6s linear infinite; }
 .maze__cell.is-head { stroke: var(--green); stroke-width: 4; }
 .maze__cell.is-head.is-end { stroke: var(--cyan); }
 .maze__cell.is-hint { fill: rgba(var(--cyan-rgb), .3); stroke: var(--cyan); animation: mazeHint .55s ease 3; }
-@keyframes mazeHint {
-  50% { fill: rgba(var(--cyan-rgb), .06); }
+/* until the first move, the square to start from breathes */
+.maze__board.is-fresh .maze__cell.is-start { animation: mazeStart 1.8s ease-in-out infinite; }
+/* solved: a light runs along the trail, square by square (--i is set in the script) */
+.maze__board.is-solved .maze__cell.is-on { animation: mazeWave .7s ease both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes mazeDash { to { stroke-dashoffset: -17; } }
+@keyframes mazeHint { 50% { fill: rgba(var(--cyan-rgb), .06); } }
+@keyframes mazeStart { 50% { stroke-width: 8; } }
+@keyframes mazeWave {
+  0%, 100% { fill: rgba(var(--green-rgb), .1); }
+  45% { fill: rgba(var(--cyan-rgb), .5); stroke: var(--cyan); }
 }
 @media (prefers-reduced-motion: reduce) {
   .maze__cell, .maze__slot { transition: none; }
-  .maze__cell.is-hint { animation: none; }
+  .maze__cell.is-end, .maze__cell.is-hint, .maze__board.is-fresh .maze__cell.is-start, .maze__board.is-solved .maze__cell.is-on, .maze__wall.is-bump { animation: none; }
 }
 
 .maze__trail {
@@ -1826,6 +1846,11 @@ kbd {
   stroke-linecap: round;
   filter: drop-shadow(0 0 3px rgba(var(--cyan-rgb), .7));
   pointer-events: none;
+}
+/* the trail ran into it */
+.maze__wall.is-bump { animation: mazeBump .4s ease; }
+@keyframes mazeBump {
+  40% { stroke: var(--red); stroke-width: 15; filter: drop-shadow(0 0 7px var(--red)); }
 }
 .maze__letter {
   font-family: var(--font-mono);
@@ -1847,15 +1872,16 @@ kbd {
 .maze__msg--ok { color: var(--green); }
 .maze__msg--warn { color: var(--yellow); }
 .maze__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; }
-.maze__actions .btn { padding: .55rem 1rem; font-size: .78rem; }
+.maze__actions .btn { padding: .55rem .9rem; font-size: .78rem; }
 .maze__actions .btn:disabled { opacity: .4; cursor: default; transform: none; background: transparent; }
 .maze__actions .btn.is-next { background: var(--green); color: #05060a; font-weight: 700; }
 .maze__hint { margin: 0; max-width: 420px; color: var(--muted); font-size: .78rem; line-height: 1.6; text-align: center; }
-.maze__legend { display: flex; align-items: center; justify-content: center; gap: .5rem 1rem; margin: 0; color: var(--muted); font-size: .75rem; }
+.maze__legend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .5rem 1rem; margin: 0; color: var(--muted); font-size: .75rem; }
 .maze__legend span { display: inline-flex; align-items: center; gap: .4rem; }
 .maze__key { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--green); border-radius: 3px; }
 .maze__key--end { border-color: var(--cyan); border-style: dashed; }
 .maze__key--wall { width: 3px; height: 14px; border: none; border-radius: 2px; background: var(--cyan); box-shadow: 0 0 4px rgba(var(--cyan-rgb), .7); }
+.maze__key--void { border: 2px dotted var(--muted); opacity: .6; }
 
 /* tab icon: a maze in line-art */
 .game-switcher__icon--maze { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9h6v6M9 3v3M15 9v6h6M15 21v-3M12 9h3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9h6v6M9 3v3M15 9v6h6M15 21v-3M12 9h3'/%3E%3C/svg%3E"); }

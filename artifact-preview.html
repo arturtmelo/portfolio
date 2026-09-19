@@ -417,21 +417,24 @@
           <div class="maze__top">
             <span>palavras: <b id="mazeSolved" class="tabular">0</b></span>
             <span>tempo: <b id="mazeTime" class="tabular">0:00</b></span>
+            <span>melhor: <b id="mazeBest" class="tabular">--</b></span>
           </div>
           <p class="maze__clue" id="mazeClue"></p>
           <div class="maze__slots" id="mazeSlots" aria-hidden="true"></div>
           <svg id="mazeBoard" class="maze__board" role="group" tabindex="0" aria-label="labirinto de letras: arraste, ou use as setas do teclado, passando por todas as casas até a última letra" xmlns="http://www.w3.org/2000/svg"></svg>
           <p class="maze__msg" id="mazeMsg" role="status" aria-live="polite"></p>
           <div class="maze__actions">
+            <button type="button" id="mazeUndo" class="btn btn--ghost">desfazer</button>
             <button type="button" id="mazeReset" class="btn btn--ghost">recomeçar</button>
             <button type="button" id="mazeHint" class="btn btn--ghost">dica</button>
             <button type="button" id="mazeNew" class="btn btn--ghost">outra palavra</button>
           </div>
-          <p class="maze__hint">comece na casa verde e arraste por todas as casas, sem atravessar as paredes, até fechar a palavra na casa tracejada.</p>
+          <p class="maze__hint">comece na casa verde e passe por todas as casas, sem atravessar paredes nem pisar nos vazios, até fechar a palavra na casa tracejada.</p>
           <p class="maze__legend">
             <span><i class="maze__key maze__key--start"></i>início</span>
             <span><i class="maze__key maze__key--end"></i>fim</span>
             <span><i class="maze__key maze__key--wall"></i>parede</span>
+            <span><i class="maze__key maze__key--void"></i>vazio</span>
           </p>
         </div>
       </div>

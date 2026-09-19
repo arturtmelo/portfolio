@@ -2068,6 +2068,8 @@ document.addEventListener('keydown', (e) => {
   const msgEl = document.getElementById('mazeMsg');
   const solvedEl = document.getElementById('mazeSolved');
   const timeEl = document.getElementById('mazeTime');
+  const bestEl = document.getElementById('mazeBest');
+  const undoBtn = document.getElementById('mazeUndo');
   const resetBtn = document.getElementById('mazeReset');
   const hintBtn = document.getElementById('mazeHint');
   const newBtn = document.getElementById('mazeNew');
@@ -2076,17 +2078,18 @@ document.addEventListener('keydown', (e) => {
   const S = 100;   // one square, in viewBox units
   const PASS = 3;  // words solved (in total) that unlock the achievement
 
-  // Words about the world this portfolio lives in, grouped by length: a word of n letters fills a
-  // grid of exactly n squares. Two words solved moves the game up to the next (longer) group.
+  // Words about the world this portfolio lives in, grouped by length. The grid is always bigger than the
+  // word: the squares left over are holes you can't step on, which is what makes the board a maze
+  // instead of a plain rectangle. Two words solved moves the game up to the next (longer) group.
   const TIERS = [
-    { shape: [2, 3], words: [
+    { shapes: [[3, 3], [2, 4], [3, 4]], words: [
       ['DEPLOY', 'colocar a aplicação no ar, para todo mundo usar'],
       ['PYTHON', 'linguagem de programação com nome de cobra'],
       ['DOCKER', 'a baleia que empacota aplicações em containers'],
       ['GITHUB', 'onde o código do Artur mora'],
       ['SCRIPT', 'roteiro de comandos que o computador executa sozinho'],
     ] },
-    { shape: [2, 4], words: [
+    { shapes: [[3, 3], [3, 4], [4, 4]], words: [
       ['PIPELINE', 'a esteira do CI/CD: build, testes e entrega, tudo automático'],
       ['TERMINAL', 'a janela preta onde se digitam comandos'],
       ['SERVIDOR', 'o computador que responde aos pedidos da internet'],
@@ -2094,7 +2097,7 @@ document.addEventListener('keydown', (e) => {
       ['RECURSAO', 'quando uma função chama a si mesma'],
       ['COMPILAR', 'transformar o código-fonte em programa executável'],
     ] },
-    { shape: [3, 3], words: [
+    { shapes: [[3, 4], [4, 4], [3, 5]], words: [
       ['FRAMEWORK', 'estrutura pronta que acelera a construção de apps, como React ou .NET'],
       ['ALGORITMO', 'passo a passo para resolver um problema'],
       ['PORTFOLIO', 'a vitrine de um desenvolvedor — como este site'],
@@ -2102,12 +2105,12 @@ document.addEventListener('keydown', (e) => {
       ['INTERFACE', 'a parte do sistema que a pessoa vê e toca'],
       ['NAVEGADOR', 'o programa que abre este site: Chrome, Firefox, Edge...'],
     ] },
-    { shape: [2, 5], words: [
+    { shapes: [[3, 4], [4, 4], [3, 5]], words: [
       ['INTEGRACAO', 'o "I" do CI/CD: juntar o código de todo mundo o tempo todo'],
       ['COMPUTACAO', 'a ciência que estuda algoritmos, dados e máquinas'],
       ['ENGENHARIA', 'profissão de quem projeta e constrói, como a de software'],
     ] },
-    { shape: [3, 4], words: [
+    { shapes: [[3, 5], [4, 4], [4, 5]], words: [
       ['AUTENTICACAO', 'provar quem você é para entrar no sistema'],
       ['DOCUMENTACAO', 'o texto que explica como usar o código (e que ninguém quer escrever)'],
       ['ORQUESTRACAO', 'o que o Kubernetes faz: coordenar vários containers'],
@@ -2126,92 +2129,126 @@ document.addEventListener('keydown', (e) => {
   }
 
   /* ---- generating a maze ----
-     Squares are numbered row by row. A wall is stored as the key of the two squares it separates.
-     1. draw a random route that visits every square once and lay the word's letters along it;
-     2. add walls (never across a step of the route) until that route is the ONLY way through;
-     3. take away any wall that turned out not to be needed, so it is no fuller of walls than it must be. */
+     Squares are numbered row by row; `avail` is the set that really exist (the rest are holes). A wall is
+     stored as the key of the two squares it separates.
+     1. choose which squares exist and draw a random route through all of them; the word's letters go
+        along it;
+     2. add walls (never across a step of the route) until that route is the ONLY way through, then take
+        away any that turned out not to be needed;
+     3. put a few walls back so it reads as a maze rather than the bare minimum. */
   const key = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
-  function neighboursOf(i, rows, cols) {
+  function neighboursOf(i, rows, cols, avail) {
     const r = Math.floor(i / cols), c = i % cols, out = [];
     if (r > 0) out.push(i - cols);
     if (r < rows - 1) out.push(i + cols);
     if (c > 0) out.push(i - 1);
     if (c < cols - 1) out.push(i + 1);
-    return out;
+    return out.filter((x) => avail.has(x));
   }
 
-  function randomRoute(rows, cols) {
-    const n = rows * cols;
-    const route = [Math.floor(Math.random() * n)];
-    const seen = new Array(n).fill(false);
-    seen[route[0]] = true;
-    let budget = 20000; // some starting squares have no full route at all; don't dig forever
+  function isConnected(avail, rows, cols) {
+    const first = avail.values().next().value;
+    const seen = new Set([first]);
+    const stack = [first];
+    while (stack.length) {
+      for (const nx of neighboursOf(stack.pop(), rows, cols, avail)) {
+        if (!seen.has(nx)) { seen.add(nx); stack.push(nx); }
+      }
+    }
+    return seen.size === avail.size;
+  }
+
+  // a route that visits every square of `avail` once (null if this start has none, or it takes too long)
+  function randomRoute(avail, rows, cols) {
+    const all = [...avail];
+    const route = [all[Math.floor(Math.random() * all.length)]];
+    const seen = new Set(route);
+    let budget = 20000;
     (function extend() {
-      if (route.length === n) return true;
+      if (route.length === avail.size) return true;
       if (--budget < 0) return false;
-      for (const next of shuffle(neighboursOf(route[route.length - 1], rows, cols).filter((c) => !seen[c]))) {
-        seen[next] = true;
+      for (const next of shuffle(neighboursOf(route[route.length - 1], rows, cols, avail).filter((c) => !seen.has(c)))) {
+        seen.add(next);
         route.push(next);
         if (extend()) return true;
         route.pop();
-        seen[next] = false;
+        seen.delete(next);
       }
       return false;
     })();
-    return route.length === n ? route : null;
+    return route.length === avail.size ? route : null;
   }
 
   // how many ways are there to visit every square from `start`, counting no further than `limit`
-  function countRoutes(start, rows, cols, walls, limit) {
-    const n = rows * cols;
-    const seen = new Array(n).fill(false);
-    seen[start] = true;
+  function countRoutes(start, rows, cols, avail, walls, limit) {
+    const seen = new Set([start]);
     let count = 0;
-    (function walk(cur, len) {
+    (function walk(cur) {
       if (count >= limit) return;
-      if (len === n) { count++; return; }
-      for (const next of neighboursOf(cur, rows, cols)) {
-        if (seen[next] || walls.has(key(cur, next))) continue;
-        seen[next] = true;
-        walk(next, len + 1);
-        seen[next] = false;
+      if (seen.size === avail.size) { count++; return; }
+      for (const next of neighboursOf(cur, rows, cols, avail)) {
+        if (seen.has(next) || walls.has(key(cur, next))) continue;
+        seen.add(next);
+        walk(next);
+        seen.delete(next);
       }
-    })(start, 1);
+    })(start);
     return count;
   }
 
-  function makePuzzle(word, clue, rows, cols) {
+  // which squares exist: random, but joined up and with real choices in them (a bare corridor is no maze)
+  function pickLayout(size, rows, cols) {
     const n = rows * cols;
-    let route = null;
-    while (!route) route = randomRoute(rows, cols);
+    for (let tries = 0; ; tries++) {
+      const avail = new Set(shuffle([...Array(n).keys()]).slice(0, size));
+      if (!isConnected(avail, rows, cols)) continue;
+      let links = 0;
+      avail.forEach((a) => neighboursOf(a, rows, cols, avail).forEach((b) => { if (a < b) links++; }));
+      // enough side-links to have real choices (a bare corridor is no maze); relaxed if a shape is stingy
+      if (links < size + (size >= 8 ? 1 : 0) - (tries < 300 ? 0 : tries < 600 ? 1 : 2)) continue;
+      const route = randomRoute(avail, rows, cols);
+      if (route) return { avail, route };
+    }
+  }
+
+  function makePuzzle(word, clue, rows, cols) {
+    const size = word.length;
+    const { avail, route } = pickLayout(size, rows, cols);
     const start = route[0];
     const steps = new Set();
-    for (let i = 0; i < n - 1; i++) steps.add(key(route[i], route[i + 1]));
+    for (let i = 0; i < size - 1; i++) steps.add(key(route[i], route[i + 1]));
 
     const candidates = [];
-    for (let a = 0; a < n; a++) {
-      for (const b of neighboursOf(a, rows, cols)) if (a < b && !steps.has(key(a, b))) candidates.push(key(a, b));
-    }
+    avail.forEach((a) => neighboursOf(a, rows, cols, avail).forEach((b) => {
+      if (a < b && !steps.has(key(a, b))) candidates.push(key(a, b));
+    }));
     const walls = new Set();
-    for (const k of shuffle(candidates)) {
+    for (const k of shuffle([...candidates])) {
       walls.add(k);
-      if (countRoutes(start, rows, cols, walls, 2) === 1) break;
+      if (countRoutes(start, rows, cols, avail, walls, 2) === 1) break;
     }
     for (const k of shuffle([...walls])) {
       walls.delete(k);
-      if (countRoutes(start, rows, cols, walls, 2) !== 1) walls.add(k);
+      if (countRoutes(start, rows, cols, avail, walls, 2) !== 1) walls.add(k);
     }
+    // half of the rest go in too (at least one when there is room), so every board shows some walls
+    // and not only the bare minimum — none of them can block the route
+    const spare = shuffle(candidates.filter((k) => !walls.has(k)));
+    spare.slice(0, Math.ceil(spare.length * 0.5)).forEach((k) => walls.add(k));
 
     const letters = [];
     route.forEach((cell, i) => { letters[cell] = word[i]; });
-    return { word, clue, rows, cols, letters, walls, route, start, end: route[n - 1] };
+    return { word, clue, rows, cols, size, avail, letters, walls, route, start, end: route[size - 1] };
   }
 
   /* ---- the game ---- */
-  let puzzle, path, solved, cells = [], slotEls = [], trail;
+  let puzzle, path, solved, hintsUsed;
+  let cells = [], slotEls = [], trail, wallEls = new Map(), bumpedAt = new Map();
   let solvedTotal = 0, sessionSolved = 0, lastWord = '';
+  let bests = {};
   let startedAt = 0, timerId = 0, hintTimer = 0;
   try { solvedTotal = Number(localStorage.getItem('artur-maze-solved')) || 0; } catch (e) {}
+  try { bests = JSON.parse(localStorage.getItem('artur-maze-best') || '{}') || {}; } catch (e) {}
   solvedEl.textContent = solvedTotal;
 
   function svgEl(name, attrs, parent) {
@@ -2234,24 +2271,27 @@ document.addEventListener('keydown', (e) => {
 
     cells = [];
     for (let i = 0; i < rows * cols; i++) {
-      cells.push(svgEl('rect', { x: (i % cols) * S + 4, y: Math.floor(i / cols) * S + 4, width: S - 8, height: S - 8, rx: 14, class: 'maze__cell' }, board));
+      const rect = svgEl('rect', { x: (i % cols) * S + 4, y: Math.floor(i / cols) * S + 4, width: S - 8, height: S - 8, rx: 14, 'data-i': i }, board);
+      if (puzzle.avail.has(i)) { rect.setAttribute('class', 'maze__cell'); cells[i] = rect; } else rect.setAttribute('class', 'maze__void');
     }
     cells[puzzle.start].classList.add('is-start');
     cells[puzzle.end].classList.add('is-end');
 
     trail = svgEl('polyline', { class: 'maze__trail' }, board);
 
+    wallEls = new Map();
+    bumpedAt = new Map();
     puzzle.walls.forEach((k) => {
       const [a, b] = k.split('-').map(Number); // a < b: b is the square to the right of a, or the one below it
       const r = Math.floor(a / cols), c = a % cols;
       const attrs = b === a + 1
         ? { x1: (c + 1) * S, y1: r * S + 8, x2: (c + 1) * S, y2: (r + 1) * S - 8 }
         : { x1: c * S + 8, y1: (r + 1) * S, x2: (c + 1) * S - 8, y2: (r + 1) * S };
-      svgEl('line', { ...attrs, class: 'maze__wall', 'data-a': a, 'data-b': b }, board);
+      wallEls.set(k, svgEl('line', { ...attrs, class: 'maze__wall', 'data-a': a, 'data-b': b }, board));
     });
 
     puzzle.letters.forEach((ch, i) => {
-      const t = svgEl('text', { x: (i % cols) * S + S / 2, y: Math.floor(i / cols) * S + S / 2, dy: '.35em', class: 'maze__letter', 'aria-hidden': 'true' }, board);
+      const t = svgEl('text', { x: (i % cols) * S + S / 2, y: Math.floor(i / cols) * S + S / 2, dy: '.35em', class: 'maze__letter', 'data-i': i, 'aria-hidden': 'true' }, board);
       t.textContent = ch;
     });
 
@@ -2263,6 +2303,7 @@ document.addEventListener('keydown', (e) => {
       return s;
     });
     clueEl.innerHTML = `<span>dica:</span> ${esc(puzzle.clue)}`;
+    bestEl.textContent = bests[puzzle.size] ? fmtTime(bests[puzzle.size]) : '--';
   }
 
   function paint() {
@@ -2278,8 +2319,10 @@ document.addEventListener('keydown', (e) => {
       s.textContent = ch;
       s.classList.toggle('is-filled', !!ch);
     });
-    hintBtn.disabled = solved;
+    board.classList.toggle('is-fresh', path.length === 1 && !solved); // the start square calls for attention until you move
+    undoBtn.disabled = solved || path.length === 1;
     resetBtn.disabled = solved || path.length === 1;
+    hintBtn.disabled = solved;
   }
 
   function say(text, kind) {
@@ -2304,12 +2347,15 @@ document.addEventListener('keydown', (e) => {
     let entry;
     do { entry = tier.words[Math.floor(Math.random() * tier.words.length)]; } while (entry[0] === lastWord && tier.words.length > 1);
     lastWord = entry[0];
-    const [r, c] = tier.shape;
-    const turned = Math.random() < 0.5; // half the time lay it on its side
-    puzzle = makePuzzle(entry[0], entry[1], turned ? c : r, turned ? r : c);
+    let [r, c] = tier.shapes[Math.floor(Math.random() * tier.shapes.length)];
+    if (Math.random() < 0.5) [r, c] = [c, r];                                   // half the time lay it on its side...
+    if (window.matchMedia?.('(max-width: 480px)').matches && c > r) [r, c] = [c, r]; // ...except on a phone, where tall fits better
+    puzzle = makePuzzle(entry[0], entry[1], r, c);
     path = [puzzle.start];
     solved = false;
+    hintsUsed = 0;
     board.classList.remove('is-solved');
+    cells.forEach((el) => el.style.removeProperty('--i'));
     timeEl.textContent = '0:00';
     newBtn.textContent = 'outra palavra';
     newBtn.classList.remove('is-next');
@@ -2322,17 +2368,36 @@ document.addEventListener('keydown', (e) => {
     solved = true;
     stopTimer();
     const secs = (Date.now() - startedAt) / 1000;
+    path.forEach((c, i) => cells[c].style.setProperty('--i', i)); // the light runs along the trail, in order
     board.classList.add('is-solved');
     solvedTotal++;
     sessionSolved++;
     solvedEl.textContent = solvedTotal;
     try { localStorage.setItem('artur-maze-solved', String(solvedTotal)); } catch (e) {}
+
+    let note = hintsUsed ? ` · ${hintsUsed} ${hintsUsed === 1 ? 'dica' : 'dicas'}` : ' · sem dicas';
+    if (!hintsUsed && (!bests[puzzle.size] || secs < bests[puzzle.size])) { // only a clean run sets a record
+      bests[puzzle.size] = Math.round(secs * 10) / 10;
+      bestEl.textContent = fmtTime(bests[puzzle.size]);
+      try { localStorage.setItem('artur-maze-best', JSON.stringify(bests)); } catch (e) {}
+      note += ' · novo recorde!';
+    }
     playEat();
-    say(`isso aí! era <b>${puzzle.word}</b> — ${fmtTime(secs)}`, 'ok');
+    say(`isso aí! era <b>${puzzle.word}</b> — ${fmtTime(secs)}${note}`, 'ok');
     newBtn.textContent = 'próxima palavra';
     newBtn.classList.add('is-next');
     paint();
     if (solvedTotal >= PASS) unlockAchievement('maze');
+  }
+
+  // a wall in the way: it flashes (and the phone buzzes) so it's clear why the trail stopped there
+  function bump(a, b) {
+    const k = key(a, b), line = wallEls.get(k), now = Date.now();
+    if (!line || now - (bumpedAt.get(k) || 0) < 450) return;
+    bumpedAt.set(k, now);
+    line.classList.add('is-bump');
+    setTimeout(() => line.classList.remove('is-bump'), 400);
+    if (navigator.vibrate) navigator.vibrate(12);
   }
 
   // One move. Stepping onto the square just behind the head takes the last step back; pressing on an
@@ -2345,7 +2410,8 @@ document.addEventListener('keydown', (e) => {
       if (at === path.length - 2) path.pop();
       else if (allowRewind) path.length = at + 1;
       else return;
-    } else if (neighboursOf(head, puzzle.rows, puzzle.cols).includes(cell) && !puzzle.walls.has(key(head, cell))) {
+    } else if (neighboursOf(head, puzzle.rows, puzzle.cols, puzzle.avail).includes(cell)) {
+      if (puzzle.walls.has(key(head, cell))) { bump(head, cell); return; }
       path.push(cell);
     } else {
       return;
@@ -2354,7 +2420,7 @@ document.addEventListener('keydown', (e) => {
     playClick();
     say('');
     paint();
-    if (path.length === puzzle.rows * puzzle.cols) {
+    if (path.length === puzzle.size) {
       if (path.map((c) => puzzle.letters[c]).join('') === puzzle.word) win();
       else say('essa rota não forma a palavra — desfaça um pedaço e tente outro caminho.', 'warn');
     }
@@ -2369,7 +2435,8 @@ document.addEventListener('keydown', (e) => {
     if (col < 0 || col >= puzzle.cols || row < 0 || row >= puzzle.rows) return -1;
     const ix = fx - col, iy = fy - row;
     if (ix < 0.14 || ix > 0.86 || iy < 0.14 || iy > 0.86) return -1; // too near an edge to tell which square is meant
-    return row * puzzle.cols + col;
+    const cell = row * puzzle.cols + col;
+    return puzzle.avail.has(cell) ? cell : -1; // a hole is nothing to step on
   }
 
   let dragging = false, lastX = 0, lastY = 0;
@@ -2404,6 +2471,9 @@ document.addEventListener('keydown', (e) => {
   board.addEventListener('lostpointercapture', letGo);
 
   /* ---- keyboard: arrows walk the trail, Backspace takes a step back, Esc starts over ---- */
+  function undo() {
+    if (!solved && path.length > 1) step(path[path.length - 2], false);
+  }
   board.addEventListener('keydown', (e) => {
     if (solved) return;
     const head = path[path.length - 1];
@@ -2414,7 +2484,7 @@ document.addEventListener('keydown', (e) => {
     else if (e.key === 'ArrowLeft' && head % cols > 0) target = head - 1;
     else if (e.key === 'ArrowRight' && head % cols < cols - 1) target = head + 1;
     if (target !== null) { e.preventDefault(); step(target, false); return; }
-    if (e.key === 'Backspace' && path.length > 1) { e.preventDefault(); step(path[path.length - 2], false); }
+    if (e.key === 'Backspace' && path.length > 1) { e.preventDefault(); undo(); }
     else if (e.key === 'Escape' && path.length > 1) { e.stopPropagation(); reset(); }
   });
 
@@ -2424,12 +2494,14 @@ document.addEventListener('keydown', (e) => {
     say('');
     paint();
   }
+  undoBtn.addEventListener('click', () => { undo(); });
   resetBtn.addEventListener('click', () => { playClick(); reset(); });
 
   // shows the next square of the way through; a wrong stretch of the trail is taken back first
   hintBtn.addEventListener('click', () => {
     if (solved) return;
     playClick();
+    hintsUsed++;
     let k = 0;
     while (k < path.length && path[k] === puzzle.route[k]) k++;
     path.length = k;
