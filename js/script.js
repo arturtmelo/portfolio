@@ -1240,8 +1240,8 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     ls: () => print('recifle/&nbsp;&nbsp;rover.cs&nbsp;&nbsp;mercado.tsx&nbsp;&nbsp;financas.tsx&nbsp;&nbsp;tutor_de_logica.md&nbsp;&nbsp;curriculo.pdf&nbsp;&nbsp;sonhos_grandes/'),
     date: () => print(new Date().toString()),
     banner: banner,
-    redbull: () => print(`<span class="term-icon term-icon--zap" aria-hidden="true"></span> estourando uma lata de Red Bull... nível de energia restaurado.<br>
-<span class="muted">250ml · ~113 kcal · 27g açúcar · 80mg cafeína · produtividade +77%</span>`),
+    redbull: () => print(`<span class="term-icon term-icon--zap" aria-hidden="true"></span> Energia?<br>
+<span class="muted">250ml · ~113 kcal · 27g açúcar · 80mg cafeína</span>`),
     joke: () => print(jokes[Math.floor(Math.random() * jokes.length)]),
     github: () => print('abrindo o github do Artur ... <a href="https://github.com/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
     linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
