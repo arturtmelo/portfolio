@@ -485,6 +485,13 @@ function closeShortcutsModal() {
     clearTimeout(timeoutId);
     el.textContent = roles[0];
   });
+  // ...and pick the animation back up afterwards instead of leaving it frozen
+  window.addEventListener('afterprint', () => {
+    ri = 0;
+    ci = roles[0].length;
+    deleting = true;
+    timeoutId = setTimeout(tick, 1400);
+  });
 })();
 
 /* ---------- live stats (lifetime / cpu) ---------- */

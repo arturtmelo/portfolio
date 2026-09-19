@@ -11,14 +11,16 @@
 <meta property="og:site_name" content="arturtmelo // full-stack">
 <meta property="og:title" content="arturtmelo // full-stack">
 <meta property="og:description" content="Portfolio de Artur Tavares de Melo — desenvolvedor full-stack (C#/.NET, JS), cloud e automação. Com um terminal de verdade escondido aqui dentro.">
-<meta property="og:image" content="https://arturtmelo.dev/og-image.png">
+<meta property="og:image" content="https://arturtmelo.dev/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ARTUR — Desenvolvedor Full-Stack (C#/.NET, Azure, React), em uma janela de terminal com chuva de código ao fundo">
 <meta property="og:locale" content="pt_BR">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="arturtmelo // full-stack">
 <meta name="twitter:description" content="Portfolio de Artur Tavares de Melo — desenvolvedor full-stack (C#/.NET, JS), cloud e automação. Com um terminal de verdade escondido aqui dentro.">
-<meta name="twitter:image" content="https://arturtmelo.dev/og-image.png">
+<meta name="twitter:image" content="https://arturtmelo.dev/og-card.png">
+<meta name="twitter:image:alt" content="ARTUR — Desenvolvedor Full-Stack (C#/.NET, Azure, React)">
 <meta name="theme-color" content="#05060a">
 <meta name="color-scheme" content="dark">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -26,6 +28,7 @@
 <link rel="preload" href="fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css">
+<noscript><style>.boot{display:none!important}.reveal{opacity:1!important;transform:none!important}</style></noscript>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -40,6 +43,80 @@
     "https://www.linkedin.com/in/arturtmelo/"
   ],
   "knowsAbout": ["C#", ".NET", "JavaScript", "React", "Vue", "Angular", "Azure", "CI/CD"]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Projetos de Artur Tavares de Melo",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "item": {
+        "@type": "SoftwareSourceCode",
+        "name": "Recifle",
+        "description": "Marketplace mobile que conecta centros de reciclagem, fornecedores e a população para negociar e fechar negócios de forma direta.",
+        "programmingLanguage": "TypeScript",
+        "author": {
+          "@type": "Person",
+          "name": "Artur Tavares de Melo",
+          "url": "https://arturtmelo.dev/"
+        },
+        "codeRepository": "https://github.com/arturtmelo/recifle"
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "item": {
+        "@type": "SoftwareSourceCode",
+        "name": "Rover",
+        "description": "Ferramenta de web scraping em C# (Selenium, ClosedXML) que extrai dados da web e exporta os resultados de forma estruturada.",
+        "programmingLanguage": "C#",
+        "author": {
+          "@type": "Person",
+          "name": "Artur Tavares de Melo",
+          "url": "https://arturtmelo.dev/"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "item": {
+        "@type": "SoftwareSourceCode",
+        "name": "Mercado Financeiro",
+        "description": "Painel de mercado financeiro em tempo real: cotações, carteira com lucro/prejuízo, alertas de preço e comparação de ativos.",
+        "programmingLanguage": "JavaScript",
+        "author": {
+          "@type": "Person",
+          "name": "Artur Tavares de Melo",
+          "url": "https://arturtmelo.dev/"
+        },
+        "codeRepository": "https://github.com/arturtmelo/mercado_financeiro",
+        "url": "https://mercado-financeiro-inky.vercel.app"
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "item": {
+        "@type": "SoftwareSourceCode",
+        "name": "Finanças",
+        "description": "Aplicativo web de controle financeiro pessoal com dashboard, gráficos analíticos, orçamentos e modo de demonstração.",
+        "programmingLanguage": "TypeScript",
+        "author": {
+          "@type": "Person",
+          "name": "Artur Tavares de Melo",
+          "url": "https://arturtmelo.dev/"
+        },
+        "codeRepository": "https://github.com/arturtmelo/financeiro",
+        "url": "https://financas.arturtmelo.dev"
+      }
+    }
+  ]
 }
 </script>
 </head>
@@ -113,8 +190,9 @@
     <h1 class="hero__title glitch" data-text="ARTUR">ARTUR</h1>
     <h2 class="hero__role">
       <span class="hero__role-prefix">$</span>
-      <span id="typewriter"></span><span class="cursor-blink">_</span>
+      <span id="typewriter"></span><noscript>Desenvolvedor Full-Stack</noscript><span class="cursor-blink">_</span>
     </h2>
+    <p class="print-only"><a href="mailto:arturtmelo1@gmail.com">arturtmelo1@gmail.com</a> · <a href="https://www.linkedin.com/in/arturtmelo/">linkedin.com/in/arturtmelo</a> · <a href="https://github.com/arturtmelo/">github.com/arturtmelo</a> · <a href="https://arturtmelo.dev/">arturtmelo.dev</a></p>
     <p class="hero__desc">
       Desenvolvedor <strong>full-stack</strong> com foco em <strong>C# / .NET</strong>,
       experiência em <strong>cloud (Azure)</strong>, APIs escaláveis e pipelines de CI/CD.
@@ -321,6 +399,9 @@
           <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
           <span class="terminal-window__title">mercado.tsx</span>
         </div>
+        <a class="project-card__preview" href="https://mercado-financeiro-inky.vercel.app" target="_blank" rel="noopener">
+          <img src="img/projects/mercado.webp" width="1024" height="512" loading="lazy" decoding="async" alt="Prévia do painel Mercado Financeiro: cotações do S&amp;P 500, Ibovespa, Nasdaq, Bitcoin e dólar, com as maiores altas e baixas — abrir a demo ao vivo">
+        </a>
         <div class="project-card__body">
           <h3>Mercado Financeiro</h3>
           <p>Painel de mercado financeiro em tempo real — cotações de ações (BR/EUA), ETFs e criptomoedas,
@@ -338,6 +419,9 @@
           <span class="dot dot--red"></span><span class="dot dot--yellow"></span><span class="dot dot--green"></span>
           <span class="terminal-window__title">financas.tsx</span>
         </div>
+        <a class="project-card__preview" href="https://financas.arturtmelo.dev" target="_blank" rel="noopener">
+          <img src="img/projects/financas.webp" width="1024" height="512" loading="lazy" decoding="async" alt="Prévia do dashboard do Finanças em modo demo: orçamentos do mês com barras de progresso e resumo de entradas, saídas e saldo — abrir a demo ao vivo">
+        </a>
         <div class="project-card__body">
           <h3>Finanças</h3>
           <p>Aplicativo web para gerenciar transações, orçamentos e visão geral das finanças,

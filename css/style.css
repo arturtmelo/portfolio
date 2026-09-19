@@ -268,6 +268,10 @@ html { color-scheme: dark; }
   transition: opacity .25s ease, visibility .25s ease;
 }
 .boot.hidden { opacity: 0; visibility: hidden; }
+/* if the script never dismisses it (blocked or crashed), it fades itself away
+   instead of leaving the page permanently covered */
+.boot { animation: bootFailsafe .4s ease 15s forwards; }
+@keyframes bootFailsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 .boot__lines p { margin: 0 0 .35rem; font-size: .85rem; white-space: pre-wrap; }
 .boot__lines .ok { color: var(--green); }
 .boot__skip {
@@ -598,6 +602,7 @@ html { color-scheme: dark; }
 
 .hero__desc { max-width: 560px; color: var(--muted); font-size: .95rem; margin-bottom: 2.2rem; }
 .hero__desc strong { color: var(--text); }
+.print-only { display: none; }
 
 .hero__cta { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 3.5rem; }
 .btn {
@@ -1042,6 +1047,31 @@ html { color-scheme: dark; }
 }
 .project-card:hover { transform: translateY(-5px); border-color: var(--green); box-shadow: 0 12px 30px rgba(var(--green-rgb),.08); }
 .project-card__body { padding: 1.4rem; }
+/* live-demo preview strip under the window bar */
+.project-card__preview {
+  display: block;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background: #0a0e17;
+}
+.project-card__preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  object-position: top;
+  filter: saturate(.92) brightness(.95);
+  transition: transform .5s ease, filter .3s ease;
+}
+.project-card:hover .project-card__preview img { transform: scale(1.035); filter: none; }
+@media (prefers-reduced-motion: reduce) {
+  .project-card__preview img { transition: none; }
+  .project-card:hover .project-card__preview img { transform: none; }
+}
+/* maximized: keep the strip short so the description still has room */
+.terminal-window--maximized .project-card__preview { flex-shrink: 0; }
+.terminal-window--maximized .project-card__preview img { aspect-ratio: auto; height: 200px; }
 .project-card__body h3 { margin: 0 0 .6rem; font-family: var(--font-display); font-size: 1.05rem; }
 .project-card__body p { margin: 0 0 1rem; color: var(--muted); font-size: .85rem; }
 .tags { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.1rem; }
@@ -1643,7 +1673,8 @@ kbd {
   .toast-stack, .palette-backdrop, .secret-overlay, .terminal-window-max-backdrop,
   #terminal, #playground, .footer, .konami-hint,
   .terminal-window__bar, .project-card .terminal-window__bar,
-  .git-log__node, .git-log__commit::before,
+  .git-log__node, .git-log__commit::before, .git-log__commit--head,
+  .skip-link, .fact-card__icon,
   #skillGraphCanvas, .skill-graph__hint,
   .badges { display: none !important; }
 
@@ -1717,6 +1748,7 @@ kbd {
   .tags span { background: #eee !important; color: #333 !important; border: 1pt solid #ddd; }
   .project-card__links a { color: #000 !important; }
   .project-card--ghost { display: none !important; }
+  .project-card__preview { display: none !important; }
 
   .contact { padding-bottom: 0 !important; }
   .contact__grid { display: flex !important; flex-direction: row; flex-wrap: wrap; gap: 8pt !important; }
@@ -1726,8 +1758,14 @@ kbd {
 
   a { color: #111 !important; text-decoration: underline; }
 
+  /* the résumé header: contact details, right under the name */
+  .print-only { display: block !important; font-size: 10pt; color: #333; margin: 2pt 0 8pt; }
+  /* on paper a link is only useful if you can read where it goes */
+  .project-card__links { flex-direction: column; gap: 2pt; }
+  .project-card__links a::after { content: " — " attr(href); font-size: 8.5pt; color: #555; word-break: break-all; }
+
   body::after {
-    content: 'gerado a partir do portfolio interativo de Artur Tavares de Melo — arturtmelo1@gmail.com';
+    content: 'gerado a partir do portfolio interativo de Artur Tavares de Melo — arturtmelo.dev · arturtmelo1@gmail.com';
     display: block;
     margin-top: 18pt;
     font-size: 8pt;
