@@ -6,7 +6,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
 
 /* ---------- console easter egg ---------- */
 console.log(
-  '%cVocê abriu o console. Curioso(a), hein? 👀',
+  '%cVocê abriu o console. Curioso(a), hein?',
   'color:#39ff8c;font-family:monospace;font-size:14px;font-weight:bold;'
 );
 console.log(
@@ -1245,7 +1245,7 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     joke: () => print(jokes[Math.floor(Math.random() * jokes.length)]),
     github: () => print('abrindo o github do Artur ... <a href="https://github.com/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
     linkedin: () => print('abrindo o linkedin do Artur ... <a href="https://www.linkedin.com/in/arturtmelo/" target="_blank" style="color:#00e0ff">clique aqui</a>'),
-    sudo: () => print('Bonita tentativa. Você não está na lista de sudoers. Esse incidente será reportado. 😏'),
+    sudo: () => print('Bonita tentativa. Você não está na lista de sudoers. Esse incidente será reportado. ' + uiIcon('shield')),
     konami: () => print('tente digitar isso com o teclado: ↑ ↑ ↓ ↓ ← → ← → B A'),
     theme: (args) => {
       const name = (args[0] || '').toLowerCase();
@@ -1259,7 +1259,7 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     },
     snake: () => {
       scrollToId('playground');
-      print('abrindo o snake... boa sorte 🐍');
+      print('abrindo o snake... boa sorte ' + uiIcon('snake'));
     },
     hack: () => {
       const p = document.createElement('p');
@@ -1274,7 +1274,7 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
         if (pct >= 100) {
           clearInterval(iv);
           setTimeout(() => {
-            print('ACESSO NEGADO. relaxa, isso é só uma piada — ninguém invade nada por aqui. 🕵️');
+            print('ACESSO NEGADO. relaxa, isso é só uma piada — ninguém invade nada por aqui. ' + uiIcon('eye'));
             unlockAchievement('hacker');
           }, 500);
         }
