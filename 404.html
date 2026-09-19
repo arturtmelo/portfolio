@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 // arturtmelo</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#05060a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2305060a'/%3E%3Ctext x='50' y='68' font-size='55' font-family='monospace' fill='%2339ff8c' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --bg: #05060a; --card: #0d1119; --border: #1c2230; --text: #dfe8f0; --muted: #8b98a5; --green: #39ff8c; --red: #ff5f56; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    line-height: 1.6;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+  }
+  .win { width: min(560px, 100%); background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: .5rem; padding: .7rem 1rem; background: #10151f; border-bottom: 1px solid var(--border); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .title { margin-left: .75rem; font-size: .75rem; color: var(--muted); }
+  .body { padding: 1.4rem; font-size: .9rem; }
+  .body p { margin: 0 0 .7rem; overflow-wrap: anywhere; }
+  .prompt { color: var(--green); font-weight: 700; }
+  .err { color: var(--red); }
+  .muted { color: var(--muted); }
+  a { color: var(--green); text-decoration: none; border-bottom: 1px dashed currentColor; }
+  a:hover, a:focus-visible { outline: none; border-bottom-style: solid; }
+  a:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-bottom: none; }
+  .cursor { display: inline-block; width: .55em; height: 1em; background: var(--green); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+</style>
+</head>
+<body>
+  <main class="win">
+    <div class="bar" aria-hidden="true">
+      <span class="dot" style="background: var(--red)"></span>
+      <span class="dot" style="background: #ffd93d"></span>
+      <span class="dot" style="background: var(--green)"></span>
+      <span class="title">artur@dev: ~</span>
+    </div>
+    <div class="body">
+      <p><span class="prompt">artur@dev:~$</span> cd <span id="path">/</span></p>
+      <p class="err">bash: cd: <span id="path2">/</span>: No such file or directory</p>
+      <p class="muted">404 — essa página não existe (ou já foi movida).</p>
+      <p><span class="prompt">artur@dev:~$</span> <a href="/">cd ~</a> <span class="cursor" aria-hidden="true"></span></p>
+    </div>
+  </main>
+  <script>
+    // show the path that was asked for, as a terminal would echo it
+    var p = location.pathname + location.search;
+    document.getElementById('path').textContent = p;
+    document.getElementById('path2').textContent = p;
+  </script>
+</body>
+</html>

@@ -415,6 +415,30 @@ function closeShortcutsModal() {
       }
     }
   }
+  // prefers-reduced-motion: the rest of the site drops its decorative motion,
+  // so the rain freezes into a single sparse still instead of falling
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    const paintStill = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.font = '14px monospace';
+      ctx.fillStyle = accent;
+      const rows = Math.floor(h / 16);
+      for (let i = 0; i < cols; i++) {
+        if (Math.random() > 0.35) continue;
+        const head = Math.floor(Math.random() * rows);
+        for (let k = 0; k < 7 && head - k >= 0; k++) {
+          ctx.globalAlpha = 0.5 * (1 - k / 7);
+          ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 16, (head - k) * 16);
+        }
+      }
+      ctx.globalAlpha = 1;
+    };
+    paintStill();
+    window.addEventListener('resize', paintStill);
+    onThemeChange(paintStill);
+    return;
+  }
+
   visibleLoop(canvas, draw, TICK_MS);
 })();
 
@@ -1083,6 +1107,8 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
   // a <form> submit (not a raw keydown check) is what reliably catches the
   // enter/go/send key across mobile virtual keyboards — keydown alone misses it
   const form = input.closest('form');
+  // the field itself is only ~20px tall — tapping anywhere on the prompt row should start typing
+  form?.addEventListener('click', (e) => { if (e.target !== input) input.focus(); });
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
     playClick();
