@@ -745,30 +745,43 @@ document.addEventListener('keydown', (e) => {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches;
 
+  // x/y = where each node sits on wide screens (fractions of the canvas).
+  // slot = where it sits inside its category's cluster on narrow screens
+  // (0 upper-left, 1 upper-right, 2 lower-right, 3 lower-left) — chosen by
+  // searching every arrangement for the fewest, shortest cross-category links.
   const CATEGORIES = [
     { id: 'lang', label: 'Linguagens', x: 0.16, y: 0.5 },
     { id: 'front', label: 'Frontend', x: 0.5, y: 0.14 },
     { id: 'cloud', label: 'Cloud & Ferramentas', x: 0.84, y: 0.5 },
   ];
   const SKILLS = [
-    { id: 'cs', label: 'C#', cat: 'lang', level: .90, x: .08, y: .30 },
-    { id: 'js', label: 'JavaScript', cat: 'lang', level: .80, x: .08, y: .72 },
-    { id: 'java', label: 'Java', cat: 'lang', level: .70, x: .24, y: .86 },
-    { id: 'py', label: 'Python', cat: 'lang', level: .75, x: .24, y: .16 },
-    { id: 'dotnet', label: '.NET', cat: 'front', level: .90, x: .28, y: .06 },
-    { id: 'react', label: 'React', cat: 'front', level: .75, x: .50, y: .14 },
-    { id: 'vue', label: 'Vue/Angular', cat: 'front', level: .65, x: .74, y: .05, mobile: { x: .72, y: .07 } },
-    { id: 'node', label: 'Node.js', cat: 'front', level: .70, x: .46, y: .34 },
-    { id: 'azure', label: 'Azure', cat: 'cloud', level: .80, x: .94, y: .28 },
-    { id: 'docker', label: 'Docker', cat: 'cloud', level: .70, x: .96, y: .58 },
-    { id: 'sql', label: 'SQL / MySQL', cat: 'cloud', level: .80, x: .84, y: .84, mobile: { x: .92, y: .70 } },
-    { id: 'git', label: 'Git / CI-CD', cat: 'cloud', level: .85, x: .66, y: .90 },
+    { id: 'cs', label: 'C#', cat: 'lang', level: .90, x: .08, y: .30, slot: 2 },
+    { id: 'js', label: 'JavaScript', cat: 'lang', level: .80, x: .08, y: .72, slot: 3 },
+    { id: 'java', label: 'Java', cat: 'lang', level: .70, x: .24, y: .86, slot: 0 },
+    { id: 'py', label: 'Python', cat: 'lang', level: .75, x: .24, y: .16, slot: 1 },
+    { id: 'dotnet', label: '.NET', cat: 'front', level: .90, x: .28, y: .06, slot: 3 },
+    { id: 'react', label: 'React', cat: 'front', level: .75, x: .57, y: .31, slot: 0 },
+    { id: 'vue', label: 'Vue/Angular', cat: 'front', level: .65, x: .74, y: .05, slot: 1 },
+    { id: 'node', label: 'Node.js', cat: 'front', level: .70, x: .46, y: .34, slot: 2 },
+    { id: 'azure', label: 'Azure', cat: 'cloud', level: .80, x: .94, y: .28, slot: 0 },
+    { id: 'docker', label: 'Docker', cat: 'cloud', level: .70, x: .96, y: .58, slot: 1 },
+    { id: 'sql', label: 'SQL / MySQL', cat: 'cloud', level: .80, x: .84, y: .84, slot: 3 },
+    { id: 'git', label: 'Git / CI-CD', cat: 'cloud', level: .85, x: .66, y: .90, slot: 2 },
   ];
   const EXTRA_EDGES = [
     ['cs', 'dotnet'], ['dotnet', 'azure'], ['dotnet', 'git'],
     ['js', 'react'], ['js', 'node'], ['node', 'docker'],
   ];
+  const BY_ID = {};
+  CATEGORIES.forEach((c) => { BY_ID[c.id] = c; });
+  SKILLS.forEach((s) => { BY_ID[s.id] = s; });
+
+  const NARROW_MAX = 620; // canvas width below which the clusters stack vertically
+  const BAND = 196;       // height of one stacked cluster
+  const SLOT_DIR = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const FONT = '"JetBrains Mono", "JetBrains Mono Fallback", monospace';
 
   function themeColor(varName, fallback) {
     return getThemeVar(varName, fallback);
@@ -779,151 +792,323 @@ document.addEventListener('keydown', (e) => {
     const num = parseInt(hex, 16);
     return `${(num >> 16) & 255},${(num >> 8) & 255},${num & 255}`;
   }
+  const radius = (level) => 5 + level * 9;
+  const skillText = (s) => `${s.label} ${Math.round(s.level * 100)}%`;
 
-  let w, h, hovered = null;
-  function resize() {
-    const rect = canvas.getBoundingClientRect();
-    w = canvas.width = rect.width;
-    h = canvas.height = rect.height;
-  }
-  window.addEventListener('resize', resize);
-  resize();
+  let w = 0, h = 0, narrow = false, hovered = null;
+  let layout = {};
+  let staticLayer = null;   // offscreen copy of everything that isn't animating
+  let staticCtx = null;
+  let staticDirty = true;
 
-  function pos(node) {
-    const narrow = w < 620;
-    const src = (narrow && node.mobile) ? node.mobile : node;
-    // pull nodes in from the edges on narrow canvases so labels have room to breathe
-    const compress = narrow ? 0.7 : 1;
-    const x = 0.5 + (src.x - 0.5) * compress;
-    return { x: x * w, y: src.y * h };
+  /* ---- layout ---------------------------------------------------------
+     Every node is treated as one box: the dot plus its label. A relaxation
+     pass then pushes any overlapping boxes apart and keeps them on the canvas,
+     so no label can ever sit on top of another, at any width. */
+  function rectOf(n) {
+    const half = Math.max(n.r, n.w / 2);
+    if (n.kind === 'hub') return { l: n.x - half, r: n.x + half, t: n.y - 34, b: n.y + n.r };
+    return n.above
+      ? { l: n.x - half, r: n.x + half, t: n.y - n.r - 17, b: n.y + n.r }
+      : { l: n.x - half, r: n.x + half, t: n.y - n.r, b: n.y + n.r + 17 };
   }
-  function radius(level) { return 5 + level * 9; }
+  function overlap(a, b, pad) {
+    const ra = rectOf(a), rb = rectOf(b);
+    return {
+      ox: Math.min(ra.r, rb.r) - Math.max(ra.l, rb.l) + pad,
+      oy: Math.min(ra.b, rb.b) - Math.max(ra.t, rb.t) + pad,
+    };
+  }
+  function relax() {
+    const nodes = Object.values(layout);
+    const keepInside = (n) => {
+      const rc = rectOf(n);
+      if (rc.l < 4) n.x += 4 - rc.l;
+      if (rc.r > w - 4) n.x -= rc.r - (w - 4);
+      if (rc.t < 4) n.y += 4 - rc.t;
+      if (rc.b > h - 4) n.y -= rc.b - (h - 4);
+    };
+    const separate = (pad) => {
+      let moved = false;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          if (a.fixed && b.fixed) continue;
+          const { ox, oy } = overlap(a, b, pad);
+          if (ox <= 0 || oy <= 0) continue;
+          moved = true;
+          const alongX = ox < oy;
+          const dir = Math.sign(alongX ? (a.x - b.x) || (a.hx - b.hx) || 1 : (a.y - b.y) || (a.hy - b.hy) || 1);
+          const push = alongX ? ox : oy;
+          const wa = a.fixed ? 0 : b.fixed ? 1 : 0.5;
+          const wb = b.fixed ? 0 : a.fixed ? 1 : 0.5;
+          if (alongX) { a.x += dir * push * wa; b.x -= dir * push * wb; }
+          else { a.y += dir * push * wa; b.y -= dir * push * wb; }
+        }
+      }
+      return moved;
+    };
+    // pass 1: settle, drifting back toward the intended spots so the shape survives
+    for (let i = 0; i < 120; i++) {
+      const moved = separate(6);
+      nodes.forEach((n) => {
+        if (n.fixed) return;
+        n.x += (n.hx - n.x) * 0.03;
+        n.y += (n.hy - n.y) * 0.03;
+        keepInside(n);
+      });
+      if (!moved && i > 8) break;
+    }
+    // pass 2: no drift — guarantee the result is genuinely overlap-free
+    for (let i = 0; i < 80; i++) {
+      const moved = separate(4);
+      nodes.forEach((n) => { if (!n.fixed) keepInside(n); });
+      if (!moved) break;
+    }
+  }
+  function findOverlaps() {
+    const ids = Object.keys(layout);
+    const pairs = [];
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const { ox, oy } = overlap(layout[ids[i]], layout[ids[j]], 0);
+        if (ox > 0 && oy > 0) pairs.push(`${ids[i]}+${ids[j]}`);
+      }
+    }
+    return pairs;
+  }
+  const skillFontSize = () => (narrow ? 10 : 10.5);
+  const hubFontSize = () => (narrow ? 11 : 12);
 
-  // keeps node labels from spilling past the canvas edge on narrow (mobile) widths
-  function fillClampedLabel(str, x, y, pad = 4) {
-    const half = ctx.measureText(str).width / 2;
-    let align = 'center', drawX = x;
-    if (x - half < pad) { align = 'left'; drawX = pad; }
-    else if (x + half > w - pad) { align = 'right'; drawX = w - pad; }
-    ctx.textAlign = align;
-    ctx.fillText(str, drawX, y);
+  function buildLayout() {
+    layout = {};
+    const measure = (font, str) => { ctx.font = font; return ctx.measureText(str).width; };
+    CATEGORIES.forEach((cat, ci) => {
+      const hubW = measure(`bold ${hubFontSize()}px ${FONT}`, cat.label);
+      const hub = { kind: 'hub', fixed: true, r: 23, w: hubW };
+      if (narrow) { hub.x = w / 2; hub.y = BAND * ci + BAND / 2; }
+      else { hub.x = cat.x * w; hub.y = cat.y * h; }
+      layout[cat.id] = hub;
+      const kids = SKILLS.filter((s) => s.cat === cat.id);
+      const widths = kids.map((s) => measure(`${skillFontSize()}px ${FONT}`, skillText(s)));
+      // narrow: spread the four satellites as wide as the canvas allows
+      const dx = Math.max(40, Math.min(76, w / 2 - Math.max(...widths) / 2 - 6));
+      kids.forEach((s, i) => {
+        const node = { kind: 'skill', r: radius(s.level), w: widths[i], above: false };
+        if (narrow) {
+          const [sx, sy] = SLOT_DIR[s.slot];
+          node.x = hub.x + sx * dx;
+          node.y = hub.y + sy * 56;
+          node.above = sy < 0; // label goes on the outer side, away from the hub
+        } else {
+          node.x = s.x * w;
+          node.y = s.y * h;
+        }
+        layout[s.id] = node;
+      });
+    });
+    Object.values(layout).forEach((n) => { n.hx = n.x; n.hy = n.y; });
+    relax();
+    // exposed so the layout can be checked from outside (0 = no box touches another)
+    const overlaps = findOverlaps();
+    canvas.dataset.layout = narrow ? 'stacked' : 'spread';
+    canvas.dataset.overlaps = String(overlaps.length);
+    canvas.dataset.overlapPairs = overlaps.join(',');
   }
+
+  let lastCssW = -1;
+  let lastDpr = -1;
+  function resize(force) {
+    const cssW = canvas.getBoundingClientRect().width;
+    // back the canvas with real device pixels so text is crisp on phones
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Mobile browsers fire resize whenever the address bar slides in or out
+    // while scrolling. That only changes the viewport height, which this layout
+    // doesn't depend on — and rebuilding would blank the canvas mid-scroll.
+    if (force !== true && cssW === lastCssW && dpr === lastDpr) return;
+    lastCssW = cssW;
+    lastDpr = dpr;
+    narrow = cssW < NARROW_MAX;
+    canvas.style.height = narrow ? `${BAND * CATEGORIES.length}px` : '';
+    const cssH = canvas.getBoundingClientRect().height;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    w = cssW;
+    h = cssH;
+    if (!staticLayer) { staticLayer = document.createElement('canvas'); staticCtx = staticLayer.getContext('2d'); }
+    staticLayer.width = canvas.width;
+    staticLayer.height = canvas.height;
+    staticCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    staticDirty = true;
+    buildLayout();
+    draw(performance.now()); // resizing just cleared the canvas — repaint now, not at the next animation frame
+  }
+  window.addEventListener('resize', () => resize());
+  document.fonts?.ready.then(() => resize(true)); // label widths depend on the webfont being in
+  resize(true);
 
   function findNodeAt(x, y) {
-    for (const s of SKILLS) {
-      const p = pos(s);
-      if (Math.hypot(p.x - x, p.y - y) <= radius(s.level) + 6) return s;
-    }
-    for (const c of CATEGORIES) {
-      const p = pos(c);
-      if (Math.hypot(p.x - x, p.y - y) <= 16) return c;
-    }
-    return null;
+    let best = null, bestD = Infinity;
+    Object.entries(layout).forEach(([id, n]) => {
+      const reach = n.kind === 'hub' ? 22 : n.r + (coarsePointer ? 14 : 6);
+      const d = Math.hypot(n.x - x, n.y - y);
+      if (d <= reach && d < bestD) { best = BY_ID[id]; bestD = d; }
+    });
+    return best;
   }
 
   function isConnected(node, a, b) {
     if (!node) return false;
     return node === a || node === b;
   }
+  // with something hovered, everything tied to it stays lit and the rest recedes
+  function related(id) {
+    if (!hovered) return true;
+    if (hovered.id === id) return true;
+    const node = BY_ID[id];
+    if (hovered.level === undefined) return node.cat === hovered.id; // hovered a category
+    if (node.id === hovered.cat) return true;
+    return EXTRA_EDGES.some(([a, b]) => (a === hovered.id && b === id) || (b === hovered.id && a === id));
+  }
 
-  function draw(t) {
+  function drawLabel(g, str, x, y, color, font, bg) {
+    g.font = font;
+    g.textAlign = 'center';
+    g.lineJoin = 'round';
+    g.lineWidth = 4;
+    g.strokeStyle = bg; // a halo in the card color keeps links from cutting through the text
+    g.strokeText(str, x, y);
+    g.fillStyle = color;
+    g.fillText(str, x, y);
+  }
+
+  // Everything except the pulsing hub halos is static between hover changes, so
+  // it's painted once into an offscreen layer and just blitted each frame —
+  // re-stroking every link and outlined label 30 times a second was the costly part.
+  function renderStatic() {
     const green = themeColor('--green', '#39ff8c');
     const cyan = themeColor('--cyan', '#00e0ff');
-    const border = themeColor('--border', '#1c2230');
     const muted = themeColor('--muted', '#8b98a5');
     const text = themeColor('--text', '#dfe8f0');
-    const borderRgb = hexToRgb(border);
+    const cardBg = themeColor('--bg-card', '#0d1119');
+    const mutedRgb = hexToRgb(muted);
+    const g = staticCtx;
 
-    ctx.clearRect(0, 0, w, h);
+    g.clearRect(0, 0, w, h);
 
-    // edges: category anchor -> its skills
-    ctx.lineWidth = 1;
-    SKILLS.forEach(s => {
-      const cat = CATEGORIES.find(c => c.id === s.cat);
-      const a = pos(cat), b = pos(s);
-      const on = isConnected(hovered, cat, s);
-      ctx.strokeStyle = on ? green : `rgba(${borderRgb},.9)`;
-      ctx.lineWidth = on ? 1.6 : 1;
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-    });
-
-    // extra cross-category edges (dashed)
-    ctx.setLineDash([3, 4]);
+    // cross-category links (dashed)
+    g.setLineDash([3, 4]);
     EXTRA_EDGES.forEach(([aId, bId]) => {
-      const na = SKILLS.find(s => s.id === aId), nb = SKILLS.find(s => s.id === bId);
-      const a = pos(na), b = pos(nb);
-      const on = isConnected(hovered, na, nb);
-      ctx.strokeStyle = on ? cyan : `rgba(${borderRgb},.9)`;
-      ctx.lineWidth = on ? 1.6 : 1;
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      const a = layout[aId], b = layout[bId];
+      const on = isConnected(hovered, BY_ID[aId], BY_ID[bId]);
+      g.strokeStyle = on ? cyan : `rgba(${mutedRgb},${hovered ? .1 : .2})`;
+      g.lineWidth = on ? 1.6 : 1;
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
     });
-    ctx.setLineDash([]);
+    g.setLineDash([]);
 
-    // category anchors — a soft pulsing halo plus a solid core
-    CATEGORIES.forEach((cat, i) => {
-      const p = pos(cat);
-      const pulse = reduceMotion ? .5 : .5 + .5 * Math.sin(t / 900 + i * 2);
-      ctx.beginPath();
-      ctx.fillStyle = `rgba(${hexToRgb(cyan)},${.12 + .08 * pulse})`;
-      ctx.arc(p.x, p.y, 18 + 5 * pulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.fillStyle = cyan;
-      ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = text;
-      ctx.font = `bold ${w < 620 ? 10 : 12}px "JetBrains Mono", monospace`;
-      fillClampedLabel(cat.label, p.x, p.y - 18);
+    // category -> skill links
+    SKILLS.forEach((s) => {
+      const a = layout[s.cat], b = layout[s.id];
+      const on = isConnected(hovered, BY_ID[s.cat], s);
+      g.strokeStyle = on ? green : `rgba(${mutedRgb},${hovered ? .12 : .28})`;
+      g.lineWidth = on ? 1.6 : 1;
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
     });
 
-    // skill nodes + always-visible labels
-    SKILLS.forEach(s => {
-      const p = pos(s);
-      const r = radius(s.level);
+    // category hub cores + titles
+    CATEGORIES.forEach((cat) => {
+      const p = layout[cat.id];
+      g.globalAlpha = related(cat.id) ? 1 : .4;
+      g.beginPath();
+      g.fillStyle = cyan;
+      g.arc(p.x, p.y, 7, 0, Math.PI * 2);
+      g.fill();
+      drawLabel(g, cat.label, p.x, p.y - 27, text, `bold ${hubFontSize()}px ${FONT}`, cardBg);
+      g.globalAlpha = 1;
+    });
+
+    // skill nodes, then their labels on top
+    SKILLS.forEach((s) => {
+      const p = layout[s.id];
       const on = hovered === s;
+      g.globalAlpha = related(s.id) ? (on ? 1 : .9) : .3;
+      g.beginPath();
+      g.fillStyle = on ? cyan : green;
+      g.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      g.fill();
+      if (on) {
+        g.lineWidth = 2;
+        g.strokeStyle = cyan;
+        g.beginPath();
+        g.arc(p.x, p.y, p.r + 4, 0, Math.PI * 2);
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    });
+    SKILLS.forEach((s) => {
+      const p = layout[s.id];
+      const on = hovered === s;
+      const lit = related(s.id);
+      g.globalAlpha = lit ? 1 : .45;
+      const y = p.above ? p.y - p.r - 5 : p.y + p.r + 13;
+      drawLabel(g, skillText(s), p.x, y, on || (hovered && lit) ? text : muted, `${on ? 'bold ' : ''}${skillFontSize()}px ${FONT}`, cardBg);
+      g.globalAlpha = 1;
+    });
+    staticDirty = false;
+  }
+
+  function draw(t) {
+    if (!w || !staticLayer) return;
+    if (staticDirty) renderStatic();
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(staticLayer, 0, 0, w, h);
+    // the only thing that moves: a soft halo pulsing around each category hub
+    const cyanRgb = hexToRgb(themeColor('--cyan', '#00e0ff'));
+    CATEGORIES.forEach((cat, i) => {
+      const p = layout[cat.id];
+      const pulse = reduceMotion ? .5 : .5 + .5 * Math.sin(t / 900 + i * 2);
+      ctx.globalAlpha = related(cat.id) ? 1 : .4;
       ctx.beginPath();
-      ctx.fillStyle = on ? cyan : green;
-      ctx.globalAlpha = on ? 1 : .85;
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${cyanRgb},${.12 + .08 * pulse})`;
+      ctx.arc(p.x, p.y, 16 + 5 * pulse, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
-      if (on) {
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = cyan;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, r + 4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = on ? text : muted;
-      const skillFontSize = w < 620 ? 8.5 : 10;
-      ctx.font = (on ? 'bold ' : '') + `${skillFontSize}px "JetBrains Mono", monospace`;
-      fillClampedLabel(`${s.label} ${Math.round(s.level * 100)}%`, p.x, p.y + r + 13);
     });
   }
 
+  function setHovered(node) {
+    if (node === hovered) return;
+    hovered = node;
+    staticDirty = true;
+    redrawIfStatic();
+  }
   // with reduced motion there's no animation loop, so hover/resize must redraw by hand
-  const redrawIfStatic = () => { if (reduceMotion) draw(0); };
-  window.addEventListener('resize', redrawIfStatic);
+  function redrawIfStatic() { if (reduceMotion) draw(0); }
 
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    hovered = findNodeAt(e.clientX - rect.left, e.clientY - rect.top);
+    setHovered(findNodeAt(e.clientX - rect.left, e.clientY - rect.top));
     canvas.style.cursor = hovered ? 'pointer' : 'default';
-    redrawIfStatic();
   });
-  canvas.addEventListener('mouseleave', () => { hovered = null; redrawIfStatic(); });
+  canvas.addEventListener('mouseleave', () => setHovered(null));
   canvas.addEventListener('touchstart', (e) => {
     const rect = canvas.getBoundingClientRect();
     const t0 = e.touches[0];
-    hovered = findNodeAt(t0.clientX - rect.left, t0.clientY - rect.top);
-    redrawIfStatic();
+    setHovered(findNodeAt(t0.clientX - rect.left, t0.clientY - rect.top));
   }, { passive: true });
-  onThemeChange(redrawIfStatic);
+  // touching anywhere else lets go of the highlight
+  document.addEventListener('touchstart', (e) => {
+    if (hovered && !canvas.contains(e.target)) setHovered(null);
+  }, { passive: true });
+  onThemeChange(() => { staticDirty = true; redrawIfStatic(); });
 
   if (reduceMotion) {
     draw(0);
   } else {
-    visibleLoop(canvas, draw, 30); // idles offscreen; a gentle halo pulse doesn't need 60fps
+    // the halo breathes over ~6s, so ~11fps is indistinguishable from 60 — and idles offscreen
+    visibleLoop(canvas, draw, 90);
   }
 })();
 

@@ -944,6 +944,10 @@ code { font-family: var(--font-mono); color: var(--green); }
 }
 #skillGraphCanvas { display: block; width: 100%; height: 420px; cursor: default; }
 .skill-graph__hint { margin: .6rem 0 0; text-align: center; font-size: .75rem; color: var(--muted); }
+/* every pixel counts on a phone: trim the frame so the graph gets the width */
+@media (max-width: 480px) {
+  .skill-graph { padding: 1rem .5rem; }
+}
 
 .badges { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 2rem; }
 .badge {
