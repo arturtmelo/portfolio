@@ -1037,7 +1037,7 @@ dica: aperte <span class="accent">Ctrl+K</span> (ou <span class="accent">⌘K</s
     projects: () => print('Confira a seção <span class="accent">#projetos</span> logo acima — ou digite <span class="accent">ls</span>.'),
     contact: () => print('email: <span class="accent">arturtmelo1@gmail.com</span> — também disponível na seção de contato ↓'),
     whoami: () => print('artur — nível de acesso: root (no seu próprio código, pelo menos)'),
-    ls: () => print('recifle/&nbsp;&nbsp;rover.cs&nbsp;&nbsp;tutor_de_logica.md&nbsp;&nbsp;curriculo.pdf&nbsp;&nbsp;sonhos_grandes/'),
+    ls: () => print('recifle/&nbsp;&nbsp;rover.cs&nbsp;&nbsp;mercado.tsx&nbsp;&nbsp;financas.tsx&nbsp;&nbsp;tutor_de_logica.md&nbsp;&nbsp;curriculo.pdf&nbsp;&nbsp;sonhos_grandes/'),
     date: () => print(new Date().toString()),
     banner: banner,
     redbull: () => print(`<span class="term-icon term-icon--zap" aria-hidden="true"></span> estourando uma lata de Red Bull... nível de energia restaurado.<br>
@@ -1668,7 +1668,10 @@ document.addEventListener('keydown', (e) => {
     input.focus();
   }
 
-  input.addEventListener('paste', (e) => e.preventDefault());
+  // pasting the snippet would defeat the race, but only matters mid-race —
+  // outside one the field is inert anyway, and blocking paste on an idle
+  // input is flagged as a bad practice
+  input.addEventListener('paste', (e) => { if (running) e.preventDefault(); });
 
   input.addEventListener('beforeinput', (e) => {
     if (!running) { e.preventDefault(); return; }
