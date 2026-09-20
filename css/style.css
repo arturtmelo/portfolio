@@ -1265,7 +1265,7 @@ html { color-scheme: dark; }
 
 /* ---------- contact ---------- */
 .contact__desc { color: var(--muted); max-width: 500px; margin-bottom: 2.5rem; }
-.contact__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.contact__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
 .contact-card {
   position: relative;
   background: var(--bg-card);

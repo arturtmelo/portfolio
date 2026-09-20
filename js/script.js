@@ -202,7 +202,7 @@ function playAchievementSound() {
 /* ---------- achievements + toasts ---------- */
 const ACHIEVEMENTS = {
   terminal: { label: 'Hacker Casual', desc: 'Rodou um comando no terminal.' },
-  konami: { label: 'Código Konami', desc: 'Digitou (ou tocou) o código secreto do joystick.' },
+  konami: { label: 'Código Konami', desc: 'Digitou (ou tocou) o código Konami do joystick.' },
   logo5x: { label: 'Dedo Rápido', desc: 'Clicou 5x no logo em menos de um segundo.' },
   palette: { label: 'Power User', desc: 'Abriu a paleta de comandos (Ctrl+K).' },
   theme: { label: 'Decorador de Terminal', desc: 'Trocou o esquema de cores do site.' },
@@ -1457,7 +1457,7 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
     help: () => print([
       line('Comandos — toque em um, ou digite:'),
       row('sobre mim', chips(['about', 'skills', 'experience', 'education', 'languages', 'projects', 'contact'].map((c) => chip(c)))),
-      row('ações', chips(['open', 'cat', 'cv', 'vcard', 'email', 'github', 'linkedin'].map((c) => chip(c)))),
+      row('ações', chips(['open', 'cat', 'cv', 'email', 'github', 'linkedin'].map((c) => chip(c)))),
       row('sistema', chips(['whoami', 'ls', 'history', 'neofetch', 'git log', 'date', 'banner', 'clear'].map((c) => chip(c)))),
       row('site', chips(['theme', 'sound', 'palette', 'achievements', 'konami'].map((c) => chip(c)))),
       row('diversão', chips(['redbull', 'joke', 'sudo'].map((c) => chip(c)))),
@@ -1514,7 +1514,7 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
       row('linkedin', link('https://www.linkedin.com/in/arturtmelo/', 'linkedin.com/in/arturtmelo')),
       row('github', link('https://github.com/arturtmelo/', 'github.com/arturtmelo')),
       whatsappHref() ? row('whatsapp', link(whatsappHref(), 'chamar no WhatsApp')) : '',
-      row('agenda', chips([chip('vcard', 'salvar contato (.vcf)'), chip('cv', 'baixar currículo (PDF)')])),
+      row('currículo', chip('cv', 'baixar em PDF')),
       line(muted('aberto a oportunidades, projetos e colaborações — ou só a trocar uma ideia sobre tecnologia.')),
     ].join('')),
 
@@ -1534,11 +1534,6 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
       }
       print(`baixando o currículo em PDF — ${link('Artur-Tavares-de-Melo-CV.pdf', 'Artur-Tavares-de-Melo-CV.pdf')} ` + muted('(para imprimir: ') + chip('cv imprimir') + muted(')'));
       document.getElementById('downloadCvBtn')?.click();
-    },
-
-    vcard: () => {
-      print(`baixando o contato — abra o arquivo ${link('artur-tavares-de-melo.vcf', '.vcf')} no celular para salvar na agenda.`);
-      document.getElementById('saveContactLink')?.click();
     },
 
     open: (args) => {
@@ -1867,7 +1862,6 @@ const PALETTE_ACTIONS = [
   },
   { label: 'Baixar currículo (PDF)', hint: 'cv curriculo resume download pdf', run: () => document.getElementById('downloadCvBtn')?.click() },
   { label: 'Imprimir currículo', hint: 'cv curriculo print imprimir papel', run: () => window.print() },
-  { label: 'Salvar contato no celular (.vcf)', hint: 'vcard contato agenda salvar telefone', run: () => document.getElementById('saveContactLink')?.click() },
   { label: 'Chamar no WhatsApp', hint: 'whatsapp zap mensagem conversar', run: () => document.querySelector('.whatsapp-btn')?.click() },
   { label: 'Ver conquistas', hint: 'achievements trophy troféu', run: () => openAchievementsModal() },
   { label: 'Ver atalhos de teclado', hint: 'shortcuts keyboard ajuda ?', run: () => openShortcutsModal() },
@@ -1895,7 +1889,7 @@ function buildPalette() {
 function renderPaletteResults(query) {
   const list = document.getElementById('paletteResults');
   // every word typed must appear somewhere in the action's name or keywords, in any order, ignoring
-  // accents: "contato celular" finds "Salvar contato no celular", and "inicio" finds "Início"
+  // accents: "pdf curriculo" finds "Baixar currículo (PDF)", and "inicio" finds "Início"
   const fold = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const words = fold(query).split(' ').filter(Boolean);
   paletteFiltered = PALETTE_ACTIONS.filter((a) => {
@@ -3173,7 +3167,7 @@ function openSecretOverlay() {
           <button type="button" class="overlay-close" aria-label="fechar (Esc)"><span class="ui-icon ui-icon--close" aria-hidden="true"></span>fechar</button>
         </div>
         <div class="konami-pad__body">
-          <p class="konami-pad__title">código secreto</p>
+          <p class="konami-pad__title">código Konami</p>
           <div class="konami-pad__seq"></div>
           <p class="konami-pad__status" role="status" aria-live="polite"></p>
           <div class="konami-pad__controls">
@@ -3312,7 +3306,7 @@ function openSecretOverlay() {
 /* ---------- download cv: a real PDF (built from the print view by scripts/build-cv.js) ---------- */
 (function downloadCv() {
   // the link itself does the download; the script only adds the click sound to the buttons and cards
-  document.querySelectorAll('#downloadCvBtn, #saveContactLink, .contact-card[download]').forEach((el) => {
+  document.querySelectorAll('#downloadCvBtn, .contact-card[download]').forEach((el) => {
     el.addEventListener('click', () => playClick());
   });
 })();
