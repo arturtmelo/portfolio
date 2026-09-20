@@ -96,6 +96,7 @@ Push para a branch `master` no GitHub (`arturtmelo/portfolio`) → o Vercel publ
 ## Notas de engenharia
 
 - **Acessibilidade:** navegação por teclado completa e sem armadilhas de foco (o `Tab` do terminal só completa quando há o que completar; a ordem de foco segue a leitura da página), `aria-*` em modais e controles, foco devolvido ao fechar, `prefers-reduced-motion` respeitado, contraste conferido nos seis temas e suporte ao **modo de alto contraste do Windows** (`forced-colors`: ícones, seleções e o acerto/erro da corrida de digitação continuam visíveis). Ao criar um controle novo, teste-o só com o teclado e com o alto contraste ligado.
+- **Design:** ritmo e margens vêm de tokens no CSS (`--gutter` para a margem lateral de hero, seções e rodapé; `--ease` para as animações de hover; `--shadow-k` para as sombras), então mexer num só lugar mantém tudo alinhado. Há um estado de clique único (`:active`) para tudo que é botão, `text-wrap: balance/pretty` nos textos e uma linha de progresso de leitura sob o menu, feita só com CSS (`animation-timeline: scroll()`; navegadores sem suporte simplesmente não a desenham).
 - **Desempenho:** animações decorativas pausam fora da tela, o canvas do fundo só inicia quando o navegador está ocioso, o labirinto só é gerado quando a aba aparece e as fontes são pré-carregadas (self-hosted, sem chamadas externas).
 - **Sem rastreamento:** nenhum analytics, nenhum cookie, nenhuma requisição a terceiros. Tudo que o site guarda (tema, som, conquistas, recordes) fica no `localStorage` do próprio navegador.
 

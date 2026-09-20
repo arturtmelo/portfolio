@@ -2880,7 +2880,7 @@ document.addEventListener('keydown', (e) => {
       note += ' · novo recorde!';
     }
     playEat();
-    say(`isso aí! era <b>${puzzle.word}</b> — ${fmtTime(secs)}${note}`, 'ok');
+    say(`era <b>${puzzle.word}</b> — ${fmtTime(secs)}${note}`, 'ok');
     newBtn.textContent = 'próxima palavra';
     newBtn.classList.add('is-next');
     paint();

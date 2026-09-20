@@ -84,6 +84,8 @@
   --tag-bg: #131a26;       /* tech tags */
   --on-accent: #05060a;    /* text that sits on a --green fill */
   --shadow-k: 1;           /* strength of drop shadows (softer on a light page) */
+  --gutter: clamp(1.25rem, 5vw, 2rem);   /* side margin shared by the hero, every section and the footer */
+  --ease: cubic-bezier(.2, .7, .2, 1);   /* the one easing curve for hovers and small reveals */
   --font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', 'JetBrains Mono Fallback Mac', ui-monospace, Menlo, Consolas, monospace;
   --font-display: 'Space Grotesk', 'Space Grotesk Fallback', sans-serif;
   --radius: 10px;
@@ -458,10 +460,10 @@ html { color-scheme: dark; }
 }
 
 /* ---------- layout helpers ---------- */
-.section { max-width: 1100px; margin: 0 auto; padding: 9rem 2rem 5rem; position: relative; scroll-margin-top: 16px; }
+.section { max-width: 1100px; margin: 0 auto; padding: clamp(4.25rem, 7.5vw, 6.5rem) var(--gutter) clamp(3rem, 5vw, 4.5rem); position: relative; scroll-margin-top: 16px; }
 .hero { scroll-margin-top: 16px; } /* 16 + the 72 of scroll-padding on html = the 88px the nav needs */
 .section__tag { color: var(--green); font-size: .8rem; letter-spacing: .1em; margin: 0 0 .5rem; }
-.section__title { font-family: var(--font-display); font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0 0 3rem; color: var(--text); }
+.section__title { font-family: var(--font-display); font-size: clamp(1.6rem, 4vw, 2.4rem); letter-spacing: -.015em; margin: 0 0 clamp(1.75rem, 4vw, 2.75rem); color: var(--text); }
 
 /* ---------- fixed social sidebar ---------- */
 .side-links {
@@ -659,7 +661,7 @@ html { color-scheme: dark; }
   align-items: flex-start;
   /* bottom padding leaves a band for the absolutely-positioned scroll hint
      (36px tall, 32px up from the edge) so it never lands on the stats */
-  padding: 8rem 2.5rem 6.5rem;
+  padding: 8rem var(--gutter) 6.5rem;
   max-width: 1100px;
   margin: 0 auto;
   position: relative;
@@ -1310,14 +1312,57 @@ html { color-scheme: dark; }
 
 /* ---------- footer ---------- */
 .footer {
-  text-align: center;
-  padding: 3rem 1.5rem;
+  padding: 3.25rem var(--gutter) 2rem;
   border-top: 1px solid var(--border);
+  background: linear-gradient(to bottom, transparent, rgba(var(--green-rgb), .035));
   color: var(--muted);
   font-size: .8rem;
 }
-.footer p { margin: .3rem 0; }
-.footer__small { font-size: .7rem; }
+.footer__inner {
+  display: grid;
+  grid-template-columns: 1.15fr 1.7fr auto;
+  gap: 2rem 3rem;
+  align-items: start;
+  max-width: calc(1100px - 2 * var(--gutter)); /* the same measure as a section's content */
+  margin: 0 auto;
+}
+.footer__logo { display: inline-block; color: var(--green); font-family: var(--font-mono); font-size: 1rem; font-weight: 700; }
+.footer__tagline { margin: .55rem 0 0; max-width: 32ch; line-height: 1.6; }
+.footer__nav { display: flex; flex-wrap: wrap; gap: .55rem 1.5rem; align-content: start; }
+.footer__nav a { color: var(--muted); transition: color .2s var(--ease); }
+.footer__nav a:hover, .footer__nav a:focus-visible { color: var(--green); }
+.footer__social { display: flex; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.footer__social a {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  transition: border-color .2s var(--ease), color .2s var(--ease), transform .2s var(--ease);
+}
+.footer__social a:hover, .footer__social a:focus-visible { border-color: var(--green); color: var(--text); transform: translateY(-2px); }
+.footer__social .ui-icon { width: 18px; height: 18px; vertical-align: 0; background: currentColor; filter: none; }
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  max-width: calc(1100px - 2 * var(--gutter));
+  margin: 2.25rem auto 0;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--border);
+}
+.footer__legal p { margin: .2rem 0; }
+.footer__small { font-size: .72rem; }
+.footer__bottom .konami-hint { margin-left: 0; }
+@media (max-width: 860px) {
+  .footer__inner { grid-template-columns: 1fr; gap: 1.75rem; }
+  .footer__bottom { flex-direction: column; align-items: center; text-align: center; margin-top: 1.75rem; }
+  .footer__bottom .konami-hint { margin: 0; }
+}
 /* the hint is a real button now: on a phone it opens the on-screen controller */
 .konami-hint {
   display: inline-flex;
@@ -2241,6 +2286,48 @@ kbd {
 :root[data-theme="claro"] .glitch::before, :root[data-theme="claro"] .glitch::after { opacity: .55; }
 
 /* =========================================================
+   DESIGN POLISH: type, pressed states, reading progress
+   ========================================================= */
+html { accent-color: var(--green); } /* form controls (the Snake speed select) follow the theme */
+h1, h2, h3, .section__title, .hero__role, .contact__desc, .footer__tagline { text-wrap: balance; }
+.hero__desc, .contact__desc, .fact-card p, .project-card__body p, .about__grid .terminal-window__body p { text-wrap: pretty; }
+
+/* "sobre": the arrow hangs in the margin, so a wrapped line lines up with the first one */
+.about__grid .terminal-window__body p { position: relative; padding-left: 1.75em; }
+.about__grid .terminal-window__body p .prompt { position: absolute; left: 0; margin: 0; }
+
+/* one pressed state for everything that can be clicked */
+.btn:active, .contact-card:active, .nav__iconbtn:active, .projects__filter:active, .theme-menu__item:active,
+.game-switcher__tab:active, .maze__size:active, .footer__social a:active, .konami-hint:active {
+  transform: translateY(0) scale(.98);
+  transition-duration: .08s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:active, .contact-card:active, .nav__iconbtn:active, .projects__filter:active, .theme-menu__item:active,
+  .game-switcher__tab:active, .maze__size:active, .footer__social a:active, .konami-hint:active { transform: none; }
+}
+
+/* reading progress: a thin line under the nav, driven by the scroll itself (no script; browsers
+   without scroll-driven animations simply don't draw it) */
+@keyframes navProgress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@supports (animation-timeline: scroll()) {
+  .nav::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    pointer-events: none;
+    animation: navProgress linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+/* =========================================================
    FORCED COLORS (Windows High Contrast): the system palette replaces every colour the page sets,
    including the fill behind masked icons and the background that marks a selected item. So icons
    are refilled with a system colour, selected items use Highlight, and pure decoration goes.
@@ -2349,6 +2436,7 @@ kbd {
   .terminal-window__body { padding: 0 !important; }
   .terminal-window__body, .terminal-window__body p { color: #222 !important; }
   .terminal-window__body p { margin: 0 0 3.5pt !important; font-size: 10pt; }
+  .about__grid .terminal-window__body p { padding-left: 0; }
   .prompt, .blink-caret, .typed-cmd .blink-caret { display: none !important; }
   .about__facts { display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 12pt !important; margin-top: 5pt !important; }
   .fact-card { border-top: .5pt solid #bbb !important; padding: 4pt 0 0 !important; break-inside: avoid; page-break-inside: avoid; }
