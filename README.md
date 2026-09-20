@@ -9,7 +9,7 @@ Portfólio pessoal de **Artur Tavares de Melo** — desenvolvedor full-stack. Um
 - **Hero, sobre, stack e projetos** — apresentação, linha do tempo em formato de `git log`, cartões de projeto e o globo dos idiomas.
 - **Terminal interativo** — comandos de verdade (veja abaixo), com histórico, `Tab` para completar e atalhos clicáveis.
 - **Playground** — três jogos: **Snake** (com zoom no celular), **corrida de digitação** e **labirinto de palavras** (4×4, 5×5 ou 6×6, com uma única rota que passa por todos os quadrados).
-- **Cinco temas de cor** — Matrix (padrão), Amber CRT, Dracula, Nord e Synthwave; a barra do navegador no celular acompanha o tema.
+- **Seis temas de cor** — Matrix (padrão), Amber CRT, Dracula, Nord, Synthwave e **Claro** (papel, o único tema claro). O botão de paleta de tintas no topo abre a lista ("temas — toque em um:"), a tecla `T` passa para o próximo e a troca é uma transição suave (sem ela quando o sistema pede menos movimento). A escolha fica salva, e a barra do navegador no celular acompanha o tema.
 - **Paleta de comandos** (`Ctrl+K` / `⌘K`), lista de atalhos (`?`) e oito **conquistas** escondidas.
 - **Código Konami** — no computador digita-se; no celular abre um controle na tela (rodapé).
 - **Currículo em PDF de verdade** — o botão `baixar_cv()` baixa `Artur-Tavares-de-Melo-CV.pdf` (A4, 2 páginas, texto selecionável e marcado para leitores de tela e sistemas de recrutamento). `Ctrl+P` gera o mesmo currículo direto do navegador.
@@ -17,7 +17,7 @@ Portfólio pessoal de **Artur Tavares de Melo** — desenvolvedor full-stack. Um
 
 ### Comandos do terminal
 
-`help` · `about` · `skills` · `experience` · `education` · `languages` · `projects` · `contact` · `email` · `github` · `linkedin` · `cv` (baixa o PDF; `cv imprimir` abre a impressão) · `vcard` · `open <projeto>` · `whoami` · `ls` · `cat` · `history` · `neofetch` · `git log` · `date` · `banner` · `theme <nome>` · `sound` · `palette` · `achievements` · `konami` · `echo` · `clear` — e alguns segredos. Digite `help` para a lista completa.
+`help` · `about` · `skills` · `experience` · `education` · `languages` · `projects` · `contact` · `email` · `github` · `linkedin` · `cv` (baixa o PDF; `cv imprimir` abre a impressão) · `vcard` · `open <projeto>` · `whoami` · `ls` · `cat` · `history` · `neofetch` · `git log` · `date` · `banner` · `theme <nome>` (também `theme light`) · `sound` · `palette` · `achievements` · `konami` · `echo` · `clear` — e alguns segredos. Digite `help` para a lista completa.
 
 ### Atalhos
 
@@ -25,6 +25,7 @@ Portfólio pessoal de **Artur Tavares de Melo** — desenvolvedor full-stack. Um
 | --- | --- |
 | `Ctrl` + `K` / `⌘K` | paleta de comandos |
 | `?` | lista de atalhos |
+| `T` | próximo tema |
 | `Esc` | fecha modais e janelas maximizadas |
 | `↑↑↓↓←→←→BA` | código Konami |
 | `WASD` / setas | controla o Snake |
@@ -56,7 +57,8 @@ artifact-preview.html   espelho do <body> do index.html, usado para pré-visuali
 - **Textos, links, experiência, formação:** direto no `index.html`.
 - **Projetos:** cada um é um `<article class="project-card">` em `#projects`. O terminal (`projects`, `open <projeto>`) lê esses cartões, então basta adicionar ou editar o cartão — não há lista duplicada.
 - **Linha do tempo (`git log`):** o bloco `.git-log` do `index.html`; cada commit tem `hash`, data, mensagem e uma linha de detalhe.
-- **Cores dos temas:** variáveis CSS em `css/style.css` (`:root` e `:root[data-theme="..."]`). Ao mudar o `--bg` de um tema, atualize também o `bg` correspondente em `THEMES` no `js/script.js` (é a cor da barra do navegador no celular).
+- **Cores dos temas:** variáveis CSS em `css/style.css` (`:root` e `:root[data-theme="..."]`). Além das cores de sempre (`--bg`, `--text`, `--green`...), cada tema define as superfícies: `--screen` (prompt do terminal, caixas de código, tabuleiros), `--bar-bg`, `--tag-bg`, `--on-accent` (texto sobre o verde), `--bg-rgb`, `--card-rgb`, `--scrim-rgb` e `--overlay-rgb` (para camadas translúcidas) e `--shadow-k` (força das sombras). **Não escreva cores escuras fixas nos componentes:** use essas variáveis, senão o tema claro quebra.
+- **Criar um tema novo:** (1) um bloco `:root[data-theme="nome"], [data-swatch="nome"] { ... }` no CSS (o seletor `data-swatch` faz a amostra de cor do menu se atualizar sozinha); (2) uma linha em `THEMES` no `js/script.js` com o `label` e o `bg` (a cor da barra do navegador no celular, igual ao `--bg`); (3) confira o contraste (4,5:1 para texto) com o axe-core nos estados principais.
 - **Palavras do labirinto:** lista `WORDS` no módulo do labirinto (`js/script.js`), com dica por palavra; só letras A–Z, sem acento.
 - **Conquistas e atalhos:** `ACHIEVEMENTS` e `SHORTCUTS` no início do `js/script.js`.
 
@@ -97,7 +99,7 @@ Push para a branch `master` no GitHub (`arturtmelo/portfolio`) → o Vercel publ
 
 ## Notas de engenharia
 
-- **Acessibilidade:** navegação por teclado completa e sem armadilhas de foco (o `Tab` do terminal só completa quando há o que completar; a ordem de foco segue a leitura da página), `aria-*` em modais e controles, foco devolvido ao fechar, `prefers-reduced-motion` respeitado, contraste conferido nos cinco temas e suporte ao **modo de alto contraste do Windows** (`forced-colors`: ícones, seleções e o acerto/erro da corrida de digitação continuam visíveis). Ao criar um controle novo, teste-o só com o teclado e com o alto contraste ligado.
+- **Acessibilidade:** navegação por teclado completa e sem armadilhas de foco (o `Tab` do terminal só completa quando há o que completar; a ordem de foco segue a leitura da página), `aria-*` em modais e controles, foco devolvido ao fechar, `prefers-reduced-motion` respeitado, contraste conferido nos seis temas e suporte ao **modo de alto contraste do Windows** (`forced-colors`: ícones, seleções e o acerto/erro da corrida de digitação continuam visíveis). Ao criar um controle novo, teste-o só com o teclado e com o alto contraste ligado.
 - **Desempenho:** animações decorativas pausam fora da tela, o canvas do fundo só inicia quando o navegador está ocioso, o labirinto só é gerado quando a aba aparece e as fontes são pré-carregadas (self-hosted, sem chamadas externas).
 - **Sem rastreamento:** nenhum analytics, nenhum cookie, nenhuma requisição a terceiros. Tudo que o site guarda (tema, som, conquistas, recordes) fica no `localStorage` do próprio navegador.
 

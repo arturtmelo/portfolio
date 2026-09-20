@@ -46,6 +46,7 @@ const THEMES = {
   dracula: { label: 'Dracula', bg: '#191a21' },
   nord: { label: 'Nord', bg: '#242933' },
   synthwave: { label: 'Synthwave', bg: '#150826' },
+  claro: { label: 'Claro (papel)', bg: '#f6f4ee' },
 };
 
 function applyTheme(name) {
@@ -54,6 +55,35 @@ function applyTheme(name) {
   else document.documentElement.setAttribute('data-theme', name);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEMES[name].bg);
   try { localStorage.setItem('artur-theme', name); } catch (e) {}
+}
+
+// Switching themes cross-fades where the browser can (View Transitions); anywhere else, or with reduced
+// motion, it simply switches. `pendingTheme` covers the frame before the switch lands (a quick second T).
+let pendingTheme = null;
+function switchTheme(name) {
+  pendingTheme = name;
+  const run = () => { pendingTheme = null; applyTheme(name); };
+  if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    try {
+      const vt = document.startViewTransition(run);
+      // a newer switch skips the one in flight, which rejects these: nothing to report, the newer one wins
+      [vt.ready, vt.finished, vt.updateCallbackDone].forEach((p) => p && p.catch && p.catch(() => {}));
+      return;
+    } catch (e) { /* fall back to the plain switch */ }
+  }
+  run();
+}
+
+// what every way of picking a theme (the nav menu, the palette, the T key) does once it has chosen one
+function chooseTheme(name) {
+  switchTheme(name);
+  unlockAchievement('theme');
+  showToast({ icon: 'palette', label: 'Tema alterado', desc: THEMES[name]?.label || name });
+}
+function cycleTheme() {
+  const keys = Object.keys(THEMES);
+  const now = pendingTheme || document.documentElement.getAttribute('data-theme') || 'matrix';
+  chooseTheme(keys[(keys.indexOf(now) + 1) % keys.length]);
 }
 
 (function initTheme() {
@@ -282,6 +312,7 @@ let shortcutsModalEl = null;
 const SHORTCUTS = [
   { keys: ['Ctrl', 'K'], alt: '⌘K', desc: 'abrir a paleta de comandos' },
   { keys: ['?'], desc: 'abrir esta lista de atalhos' },
+  { keys: ['T'], desc: 'próximo tema (a lista completa está no botão de tema, no topo)' },
   { keys: ['Esc'], desc: 'fechar modais ou restaurar uma janela maximizada' },
   { keys: ['↑', '↑', '↓', '↓', '←', '→', '←', '→', 'B', 'A'], desc: 'código Konami — no celular, toque em ↑↑↓↓←→←→BA no rodapé' },
   { keys: ['WASD'], alt: 'setas', desc: 'controlar o Snake, no playground' },
@@ -422,11 +453,12 @@ function closeShortcutsModal() {
 (function matrix() {
   const canvas = document.getElementById('matrix-canvas');
   const ctx = canvas.getContext('2d');
-  let w, h, cols, drops, accent;
+  let w, h, cols, drops, accent, fade;
   const chars = 'アイウエオカキクケコサシスセソ01アルツールデコード{}<>/;#$%&*ARTUR'.split('');
 
   function readAccent() {
     accent = getThemeVar('--green', '#39ff8c');
+    fade = `rgba(${getThemeVar('--bg-rgb', '5,6,10')},0.117)`;
   }
   function resize() {
     w = canvas.width = window.innerWidth;
@@ -443,7 +475,7 @@ function closeShortcutsModal() {
   const TICK_MS = 30;
   const STEPS_PER_TICK = 2;
   function draw() {
-    ctx.fillStyle = 'rgba(5,6,10,0.117)';
+    ctx.fillStyle = fade;
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = accent;
     ctx.font = '14px monospace';
@@ -1225,6 +1257,75 @@ document.addEventListener('keydown', (e) => {
     if (soundEnabled) playClick();
   });
 
+  // theme menu: a button that opens the list of themes, one tap to switch
+  const themeBtn = document.createElement('button');
+  themeBtn.type = 'button';
+  themeBtn.className = 'nav__iconbtn nav__iconbtn--theme';
+  themeBtn.setAttribute('aria-haspopup', 'menu');
+  themeBtn.setAttribute('aria-expanded', 'false');
+  themeBtn.innerHTML = uiIcon('palette');
+
+  const pop = document.createElement('div');
+  pop.className = 'theme-pop';
+  pop.id = 'themePop';
+  pop.innerHTML = `
+    <p class="theme-pop__title" id="themePopTitle">temas — toque em um:</p>
+    <div class="theme-menu" role="menu" aria-labelledby="themePopTitle">${Object.entries(THEMES).map(([key, t]) => `
+      <button type="button" role="menuitemradio" aria-checked="false" class="theme-menu__item" data-theme-pick="${key}" aria-label="${t.label}" tabindex="-1">
+        <span class="theme-swatch" data-swatch="${key}" aria-hidden="true"></span>
+        <span class="theme-menu__name">${key}</span>
+        <span class="theme-menu__mark" aria-hidden="true"></span>
+      </button>`).join('')}
+    </div>`;
+  const themeItems = [...pop.querySelectorAll('.theme-menu__item')];
+  const paintTheme = () => {
+    const now = document.documentElement.getAttribute('data-theme') || 'matrix';
+    themeItems.forEach((it) => {
+      const on = it.dataset.themePick === now;
+      it.setAttribute('aria-checked', String(on));
+      it.querySelector('.theme-menu__mark').textContent = on ? '*' : '';
+    });
+    const label = THEMES[now]?.label || now;
+    themeBtn.setAttribute('aria-label', `Trocar o tema (atual: ${label})`);
+    themeBtn.title = `Tema: ${label} — clique para trocar (atalho: T)`;
+  };
+  let themeOpen = false;
+  const setThemeMenu = (open, { refocus = true } = {}) => {
+    if (open === themeOpen) return;
+    themeOpen = open;
+    pop.classList.toggle('open', open);
+    themeBtn.setAttribute('aria-expanded', String(open));
+    if (open) {
+      paintTheme();
+      (themeItems.find((it) => it.getAttribute('aria-checked') === 'true') || themeItems[0]).focus({ preventScroll: true });
+    } else if (refocus) {
+      themeBtn.focus({ preventScroll: true });
+    }
+  };
+  themeBtn.addEventListener('click', () => setThemeMenu(!themeOpen));
+  themeBtn.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown') { e.preventDefault(); setThemeMenu(true); } });
+  pop.addEventListener('click', (e) => {
+    const it = e.target.closest('.theme-menu__item');
+    if (!it) return;
+    chooseTheme(it.dataset.themePick);
+    paintTheme();
+    setThemeMenu(false);
+  });
+  pop.addEventListener('keydown', (e) => {
+    const i = themeItems.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); themeItems[(i + 1) % themeItems.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); themeItems[(i - 1 + themeItems.length) % themeItems.length].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); themeItems[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); themeItems[themeItems.length - 1].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setThemeMenu(false); }
+    else if (e.key === 'Tab') setThemeMenu(false, { refocus: false }); // Tab moves on, as it does out of any menu
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (themeOpen && !pop.contains(e.target) && !themeBtn.contains(e.target)) setThemeMenu(false, { refocus: false });
+  });
+  onThemeChange(paintTheme); // a theme picked from the terminal, the palette or the T key updates the mark too
+  paintTheme();
+
   const paletteBtn = document.createElement('button');
   paletteBtn.type = 'button';
   paletteBtn.className = 'nav__iconbtn nav__iconbtn--kbd';
@@ -1252,9 +1353,11 @@ document.addEventListener('keydown', (e) => {
   shortcutsBtn.addEventListener('click', () => openShortcutsModal());
 
   controls.appendChild(soundBtn);
+  controls.appendChild(themeBtn);
   controls.appendChild(paletteBtn);
   controls.appendChild(shortcutsBtn);
   controls.appendChild(trophyBtn);
+  controls.appendChild(pop);
   nav.insertBefore(controls, burger || null);
   updateTrophyBadge();
 })();
@@ -1526,9 +1629,10 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
     banner: () => print(BANNER),
 
     theme: (args) => {
-      const name = (args[0] || '').toLowerCase();
+      const asked = (args[0] || '').toLowerCase();
+      const name = THEME_ALIASES[asked] || asked;
       if (THEMES[name]) {
-        applyTheme(name);
+        switchTheme(name);
         unlockAchievement('theme');
         print(`tema alterado para: <span class="accent">${esc(THEMES[name].label)}</span>`);
       } else {
@@ -1564,8 +1668,11 @@ let openKonamiPad = null;   // set by the Konami code below; the terminal and th
   const ALIASES = {
     ajuda: 'help', sobre: 'about', habilidades: 'skills', experiencia: 'experience', formacao: 'education',
     idiomas: 'languages', projetos: 'projects', contato: 'contact', curriculo: 'cv', conquistas: 'achievements',
+    light: 'claro', clara: 'claro', dark: 'matrix', escuro: 'matrix',
     historico: 'history', limpar: 'clear', ll: 'ls', cls: 'clear', abrir: 'open',
   };
+  // `theme light` / `theme escuro` and the like
+  const THEME_ALIASES = { light: 'claro', clara: 'claro', papel: 'claro', dark: 'matrix', escuro: 'matrix' };
   // a bare theme name (as `theme` lists them) also works on its own — but isn't offered by Tab
   const THEME_SHORTCUTS = new Set(Object.keys(THEMES));
   THEME_SHORTCUTS.forEach((name) => { commands[name] = () => commands.theme([name]); });
@@ -1731,7 +1838,7 @@ const PALETTE_ACTIONS = [
   ...Object.entries(THEMES).map(([key, t]) => ({
     label: `Tema: ${t.label}`,
     hint: 'cor cores aparência',
-    run: () => { applyTheme(key); unlockAchievement('theme'); showToast({ icon: 'palette', label: 'Tema alterado', desc: t.label }); }
+    run: () => chooseTheme(key)
   })),
   {
     label: 'Jogar Snake', hint: 'jogo game playground cobrinha', run: () => {
@@ -1865,6 +1972,12 @@ document.addEventListener('keydown', (e) => {
     paletteEl && paletteEl.classList.contains('open') ? closePalette() : openPalette();
     return;
   }
+  if ((e.key === 't' || e.key === 'T') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable)) return;
+    cycleTheme();
+    return;
+  }
   if (e.key === '?') {
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -1959,11 +2072,12 @@ document.addEventListener('keydown', (e) => {
     const cyan = themeColor('--cyan', '#00e0ff');
     const red = themeColor('--red', '#ff5f56');
     const border = themeColor('--border', '#1c2230');
+    const screen = themeColor('--screen', '#0a0e17');
     const t = performance.now();
     const scale = canvas.width / SIZE;
     const blur = (px) => px * scale; // shadowBlur is in device pixels, so keep it in proportion to the board
 
-    ctx.fillStyle = '#0a0e17';
+    ctx.fillStyle = screen;
     ctx.fillRect(0, 0, SIZE, SIZE);
 
     ctx.strokeStyle = border;
@@ -2021,7 +2135,8 @@ document.addEventListener('keydown', (e) => {
     ctx.shadowBlur = 0;
 
     if (gameOver) {
-      ctx.fillStyle = 'rgba(0,0,0,.65)';
+      const dim = hexToRgb(screen);
+      ctx.fillStyle = `rgba(${dim.r},${dim.g},${dim.b},.78)`;
       ctx.fillRect(0, 0, SIZE, SIZE);
 
       // the square the snake crashed into (only set on self-collision) lights up red
@@ -2041,7 +2156,7 @@ document.addEventListener('keydown', (e) => {
       ctx.fillStyle = green;
       ctx.font = 'bold 26px "JetBrains Mono", monospace';
       ctx.fillText('game over', SIZE / 2, SIZE / 2 - 100);
-      ctx.fillStyle = '#dfe8f0';
+      ctx.fillStyle = themeColor('--text', '#dfe8f0');
       ctx.font = '16px "JetBrains Mono", monospace';
       ctx.fillText(`você fez ${score} pontos`, SIZE / 2, SIZE / 2 - 70);
     }
