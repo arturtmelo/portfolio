@@ -12,11 +12,12 @@ Portfólio pessoal de **Artur Tavares de Melo** — desenvolvedor full-stack. Um
 - **Cinco temas de cor** — Matrix (padrão), Amber CRT, Dracula, Nord e Synthwave; a barra do navegador no celular acompanha o tema.
 - **Paleta de comandos** (`Ctrl+K` / `⌘K`), lista de atalhos (`?`) e oito **conquistas** escondidas.
 - **Código Konami** — no computador digita-se; no celular abre um controle na tela (rodapé).
-- **Versão para impressão** — `Ctrl+P` gera um currículo limpo a partir da própria página.
+- **Currículo em PDF de verdade** — o botão `baixar_cv()` baixa `Artur-Tavares-de-Melo-CV.pdf` (A4, 2 páginas, texto selecionável e marcado para leitores de tela e sistemas de recrutamento). `Ctrl+P` gera o mesmo currículo direto do navegador.
+- **Contato completo** — e-mail (com botão de copiar), WhatsApp, LinkedIn, GitHub, o PDF e **"salvar contato"**: um `.vcf` que o celular adiciona à agenda com um toque.
 
 ### Comandos do terminal
 
-`help` · `about` · `skills` · `experience` · `education` · `languages` · `projects` · `contact` · `email` · `github` · `linkedin` · `cv` · `open <projeto>` · `whoami` · `ls` · `cat` · `history` · `neofetch` · `git log` · `date` · `banner` · `theme <nome>` · `sound` · `palette` · `achievements` · `konami` · `echo` · `clear` — e alguns segredos. Digite `help` para a lista completa.
+`help` · `about` · `skills` · `experience` · `education` · `languages` · `projects` · `contact` · `email` · `github` · `linkedin` · `cv` (baixa o PDF; `cv imprimir` abre a impressão) · `vcard` · `open <projeto>` · `whoami` · `ls` · `cat` · `history` · `neofetch` · `git log` · `date` · `banner` · `theme <nome>` · `sound` · `palette` · `achievements` · `konami` · `echo` · `clear` — e alguns segredos. Digite `help` para a lista completa.
 
 ### Atalhos
 
@@ -41,6 +42,10 @@ fonts/                  JetBrains Mono e Space Grotesk (latin, woff2) + licença
 img/projects/           capturas dos projetos (webp)
 og-card.png             imagem de compartilhamento (Open Graph / Twitter)
 apple-touch-icon.png    ícone para a tela inicial do iOS
+Artur-Tavares-de-Melo-CV.pdf  o currículo em PDF (gerado, veja abaixo)
+artur-tavares-de-melo.vcf     cartão de contato para a agenda do celular
+scripts/build-cv.js     gera o PDF a partir da versão de impressão do site
+.gitattributes          mantém o .vcf com finais de linha CRLF
 robots.txt, sitemap.xml SEO
 vercel.json             cabeçalhos de segurança e cache
 artifact-preview.html   espelho do <body> do index.html, usado para pré-visualizar
@@ -55,11 +60,25 @@ artifact-preview.html   espelho do <body> do index.html, usado para pré-visuali
 - **Palavras do labirinto:** lista `WORDS` no módulo do labirinto (`js/script.js`), com dica por palavra; só letras A–Z, sem acento.
 - **Conquistas e atalhos:** `ACHIEVEMENTS` e `SHORTCUTS` no início do `js/script.js`.
 
+## O currículo em PDF
+
+O PDF **não é escrito à mão**: sai da versão de impressão do próprio site (`@media print` em `css/style.css`, com `@page` em A4), então o conteúdo vem do `index.html`. Depois de mudar qualquer coisa que apareça no currículo (texto, experiência, projetos, habilidades), gere de novo e faça o commit do arquivo:
+
+```bash
+node scripts/build-cv.js
+```
+
+Precisa do Node 22+ e de um Chrome, Chromium ou Edge instalado (sem dependências; use `CHROME=/caminho/do/chrome` se ele estiver num lugar incomum). O script imprime o tamanho e o número de páginas.
+
+O que sai na impressão é decidido no CSS: títulos como `sobre.txt` viram "Sobre", o título "ARTUR" dá lugar ao nome completo (`.print-name`), a linha "disponível para novas oportunidades" e os cartões de contato ficam de fora, e os projetos ganham o endereço dos links por extenso. Para esconder ou trazer algo, ajuste a lista de `display: none` no início do bloco `@media print`.
+
+**Cartão de contato (.vcf):** é um arquivo de texto editável (`artur-tavares-de-melo.vcf`). Ele inclui o celular que já está no link do WhatsApp; para tirar o número, apague a linha `TEL`. Mantenha os finais de linha CRLF (o `.gitattributes` já protege isso).
+
 > Sempre que mudar o `<body>` do `index.html`, aplique a mesma mudança no `artifact-preview.html` — os dois corpos precisam ser idênticos.
 
 ## Rodar localmente
 
-Não há build. Abra o `index.html` no navegador, ou sirva a pasta com qualquer servidor estático:
+O site não tem build. Abra o `index.html` no navegador, ou sirva a pasta com qualquer servidor estático:
 
 ```bash
 npx serve .

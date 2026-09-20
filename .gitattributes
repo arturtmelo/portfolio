@@ -1,0 +1,3 @@
+# keep the vCard byte-for-byte: the format wants CRLF line endings
+*.vcf -text
+*.pdf binary

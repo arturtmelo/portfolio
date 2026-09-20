@@ -1,0 +1,15 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//arturtmelo.dev//portfolio//PT
+N:Melo;Artur;Tavares de;;
+FN:Artur Tavares de Melo
+TITLE:Desenvolvedor Full-Stack
+EMAIL;TYPE=INTERNET:arturtmelo1@gmail.com
+TEL;TYPE=CELL:+55 81 99127-6452
+URL:https://arturtmelo.dev/
+item1.URL:https://www.linkedin.com/in/arturtmelo/
+item1.X-ABLabel:LinkedIn
+item2.URL:https://github.com/arturtmelo/
+item2.X-ABLabel:GitHub
+NOTE:Desenvolvedor full-stack (C#/.NET, Azure, React). Portfólio: https://arturtmelo.dev/
+END:VCARD
